@@ -4,7 +4,7 @@
 #include <Servo.h>
 #include "Mathclasses.h"
 class ClawUnit : IUpdatable {
-  uint8_t mD, mP, minP, A, B, state;
+  uint8_t mD, mP, minP, A, B, rstate, gstate;
   Servo S;
 public:
   ClawUnit() {}
@@ -45,9 +45,12 @@ public:
     return (digitalRead(B));  //верхний канал   '_'.
   }
   void Update() {
-    state = a()+2*b();
+    rstate = a()+2*b();
   }
   uint8_t getState(){
-    return(state);
+    return(rstate);
+  }
+  void toggle(){
+    if (gstate>0) release(); else grab();
   }
 };
