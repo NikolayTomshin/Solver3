@@ -28,3 +28,4 @@ class Timer : TimeManager {
     time = _time;
   }
 };
+

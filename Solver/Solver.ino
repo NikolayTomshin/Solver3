@@ -67,5 +67,4 @@ void setup() {
 }
 void loop() {
   nexLoop(nex_listen_list);
-  // delay(15);
 }
