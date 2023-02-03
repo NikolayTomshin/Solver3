@@ -3,44 +3,36 @@
 #include "Updatable.h"
 #include <Servo.h>
 #include "Mathclasses.h"
-class ClawUnit : IUpdatable {
-  uint8_t mD, mP, minP, A, B, rstate, gstate, adP;
-  Servo S;
+class ClawUnitBase : IUpdatable {
+protected:
+  uint8_t mD, mP, A, B;  //Pins
+  Servo S;               //Servo object
+  uint8_t grabPositions[3];
+  uint8_t rstate;
+
 public:
-  ClawUnit() {}
-  ClawUnit(uint8_t md, uint8_t mp, uint8_t minp, uint8_t adp, uint8_t sc, uint8_t a, uint8_t b) {
-    mD = md;
-    mP = mp;
-    A = a;
-    B = b;
-    minP = minp;
-    adP = adp;
-    S.attach(sc);
-    pinMode(mD, OUTPUT);
-    pinMode(mP, OUTPUT);
+  ClawUnitBase() {}
+  ClawUnitBase(uint8_t md, uint8_t mp, uint8_t sc, uint8_t a, uint8_t b) {
+    mD = md;              //Rotary DC motor direction control pin;
+    mP = mp;              //Rotary DC motor power control pin;
+    A = a;                //Pin for encoder A channel (lower track);
+    B = b;                //Pin for encoder B channel (upper track);
+    S.attach(sc);         //Attach servo to sc pin, it grabs cube;
+    pinMode(mD, OUTPUT);  //Set dc control
+    pinMode(mP, OUTPUT);  //pins to output;
   }
-  void grab() {
-    S.write(180);
-    gstate = 2;
+  void SetAngles(uint8_t releas, uint8_t hold, uint8_t grab) {
+    grabPositions[0] = releas;
+    grabPositions[1] = hold;
+    grabPositions[2] = grab;
   }
-  void release() {
-    S.write(0);
-    gstate = 0;
-  }
-  void loosen() {
-    S.write(175);
-    gstate = 1;
-  }
-  void toggle() {
-    if (gstate > 0) release();
-    else loosen();
-  }
+
   void stop() {
     digitalWrite(mP, LOW);
   }
   void go(bool dir) {
     digitalWrite(mD, dir);
-    analogWrite(mP, minP + adP * gstate);
+    analogWrite(mP, 170);
   }
   void run(bool dir) {
     digitalWrite(mD, dir);
@@ -52,10 +44,23 @@ public:
   bool b() {
     return (digitalRead(B));  //верхний канал   '_'.
   }
-  void Update() {
-    rstate = a() + 2 * b();
-  }
   uint8_t getState() {
     return (rstate);
   }
+  void update() {}
+  friend class ClawState;
+};
+
+class ClawState {
+  ClawUnitBase *subject;
+  virtual stateUpdate(){};
+};
+
+class ClawUnit : ClawUnitBase {
+  ClawState state;
+public:
+  ClawUnit()
+    : ClawUnitBase() {}
+  ClawUnit(uint8_t md, uint8_t mp, uint8_t sc, uint8_t a, uint8_t b)
+    : ClawUnitBase(md, mp, sc, a, b) {}
 };

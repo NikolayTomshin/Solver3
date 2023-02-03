@@ -2,5 +2,5 @@
 
 class IUpdatable {
 public:
-  virtual void Update();
+  void update(){};
 };

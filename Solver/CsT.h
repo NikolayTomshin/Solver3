@@ -1,5 +1,5 @@
-#include "HardwareSerial.h"
 #pragma once
+#include "HardwareSerial.h"
 #include "Vec.h"
 
 struct CsT : Cs {
