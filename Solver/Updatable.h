@@ -1,6 +1,6 @@
-
+#pragma once
 
 class IUpdatable {
 public:
-  void update(){};
+  void update(){}
 };

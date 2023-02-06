@@ -30,8 +30,10 @@ void b4PopCallback(void *ptr) {
 }
 
 void b3PushCallback(void *ptr) {
+  n1.increasTarget(true);
 }
 void b5PushCallback(void *ptr) {
+  n1.increasTarget(false);
 }
 void b3PopCallback(void *ptr) {
 }
@@ -39,10 +41,10 @@ void b5PopCallback(void *ptr) {
 }
 
 void setup() {
+  Serial.begin(9600);
   Serial1.begin(9600);
-  delay(100);
-  n1=ClawUnit(4, 5, 10, A0, A1);
-  n2=ClawUnit(7, 6, 9, A2, A3);
+  n1 = ClawUnit(4, 5, 10, A0, A1);
+  n2 = ClawUnit(7, 6, 9, A2, A3);
   b0.attachPush(b0PushCallback);
   b1.attachPush(b1PushCallback);
   b1.attachPop(b1PopCallback);
@@ -53,7 +55,12 @@ void setup() {
   b4.attachPop(b4PopCallback);
   b5.attachPush(b5PushCallback);
   b5.attachPop(b5PopCallback);
+  while (!Serial)
+    ;
+  n1.allign();
 }
 void loop() {
   nexLoop(ManualList);
+  n1.updateBA();
+  n1.chase();
 }
