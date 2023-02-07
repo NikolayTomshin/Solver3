@@ -10,14 +10,17 @@ NexButton b3 = NexButton(0, 4, "b3");  //страница дисплея, id и 
 NexButton b4 = NexButton(0, 5, "b4");
 NexButton b5 = NexButton(0, 6, "b5");
 
-
+bool stop = false;
 ClawUnit n1;
 ClawUnit n2;
 NexTouch *ManualList[] = { &b0, &b1, &b2, &b3, &b4, &b5 };  //массив ссылок на кнопки
+Timer buttonTimer(20);
 
 void b0PushCallback(void *ptr) {
+  stop = !stop;
 }
 void b2PushCallback(void *ptr) {
+  n1.toggleGrab();
 }
 
 void b1PushCallback(void *ptr) {
@@ -30,10 +33,10 @@ void b4PopCallback(void *ptr) {
 }
 
 void b3PushCallback(void *ptr) {
-  n1.increasTarget(true);
+  n1.increaseTarget(2);
 }
 void b5PushCallback(void *ptr) {
-  n1.increasTarget(false);
+  n1.increaseTarget(-2);
 }
 void b3PopCallback(void *ptr) {
 }
@@ -55,12 +58,10 @@ void setup() {
   b4.attachPop(b4PopCallback);
   b5.attachPush(b5PushCallback);
   b5.attachPop(b5PopCallback);
-  while (!Serial)
-    ;
-  n1.allign();
+  n1.SetAngles(0, 170, 180);
+  n1.allignRotation();
 }
 void loop() {
-  nexLoop(ManualList);
-  n1.updateBA();
-  n1.chase();
+  if (buttonTimer.isLoop()) nexLoop(ManualList);
+  n1.update();
 }

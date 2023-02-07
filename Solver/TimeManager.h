@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 class TimeManager {  //base class for measuring flow of time
 protected:
   long startTime;  //starting point in time, relative zero on timeline etc.
@@ -34,8 +36,11 @@ public:
 };
 
 class Timer : TimeManager {  //TimeManager with dedicated target time variable to save time on loading target time every time
-public:
   long targetTime;
+public:
+  Timer(long _targetTime) {
+    targetTime = _targetTime;
+  }
   bool isTime() {  //True if target Time passed
     return (timePassed() >= targetTime);
   }

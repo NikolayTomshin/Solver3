@@ -3,11 +3,11 @@
 #include "TimeManager.h"
 #include "Updatable.h"
 
-struct ParametreFunction {
+struct Function {
   whatHere(float t) {}
 };
 
-struct Lerp : ParametreFunction {
+struct Lerp : Function {
 public:
   float key[2];
 public:
@@ -20,7 +20,7 @@ public:
     return (key[0] * (1 - t) + key[1] * t);
   }
 };
-struct Lerp2 : ParametreFunction {  //Bilinear interpolation
+struct Lerp2 : Function {  //Bilinear interpolation
 public:
   float key[3];
 public:
