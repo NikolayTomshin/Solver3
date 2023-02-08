@@ -16,10 +16,10 @@ int8_t BSign(bool b, int8_t a) {  //false positive, true negative
 int8_t BMult(bool b, int8_t a) {
   return (b ? a : 0);
 }
-uint8_t numberLoop(int8_t value, uint8_t loopLength) {//get number inside loop, number should be inside double boundries of loop
+uint8_t numberLoop(int8_t value, uint8_t loopLength) {  //get number inside loop, number should be inside double boundries of loop
   if (value < 0) {
     value += loopLength;
-  } else if (value > (loopLength-1))
+  } else if (value > (loopLength - 1))
     value -= loopLength;
   return uint8_t(value);
 }
@@ -28,5 +28,5 @@ int8_t cycleVector(int8_t position, int8_t target, uint8_t cycleLength) {  //pol
   if (closerThanHalf) {          //if clothere than half the cyrcle than shortest path isn't going through polar 0 and calculates as difference
     return (target - position);  //
   }                              //else shortese path is going through polar 0 and we moving it
-  return (target - position + cycleLength);
+  return (target - position + BSign((target < position), cycleLength));
 }

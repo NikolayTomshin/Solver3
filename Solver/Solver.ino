@@ -15,6 +15,7 @@ ClawUnit n1;
 ClawUnit n2;
 NexTouch *ManualList[] = { &b0, &b1, &b2, &b3, &b4, &b5 };  //массив ссылок на кнопки
 Timer buttonTimer(20);
+TimeManager test;
 
 void b0PushCallback(void *ptr) {
   stop = !stop;

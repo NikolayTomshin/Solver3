@@ -22,10 +22,13 @@ class ClawUnit : IUpdatable {
   bool ab[2];
   uint8_t targetRotation = 0;   //0..7
   uint8_t currentRotation = 0;  //0..7
+  bool enableChase = true;
   bool chaseFunctionShouldAct;
   bool justArrived = false;
   uint8_t oscilationNumber = 0;
   TimeManager oscilationCD;
+  uint8_t chaseBasePower = 255;
+
 
   //variables for predicting claw rotation between ortogonal orientations
   float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
@@ -80,22 +83,35 @@ public:
       chaseFunctionShouldAct = true;
     }
   }
+  void resetOscilations() {
+    justArrived = false;
+    oscilationNumber = 0;
+  }
   void setTarget(int8_t _target) {
     targetRotation = numberLoop(_target, 8);
-    justArrived = false;
-    chaseFunctionShouldAct=true;
+    resetOscilations();
+    chaseFunctionShouldAct = true;
+    chaseBasePower = 255;
   }
   void increaseTarget(int8_t delta) {
     setTarget(targetRotation + delta);
   }
 
   void chase() {  //chases target
-    if (oscilationNumber > 0)
-      if (oscilationCD.isTimePassed(150)) {
-        oscilationNumber = 0;  //reset oscilations
-        justArrived = false;
+    if (oscilationNumber > 0) {
+      if (oscilationCD.isTimePassed(100)) {
+        resetOscilations();
+        if (targetRotation != currentRotation) {
+          chaseFunctionShouldAct = true;
+        } else {
+          chaseBasePower = 130;
+        }
       }
-
+    } else {
+      if (targetRotation != currentRotation) {
+        chaseBasePower = 255;
+      }
+    }
     if (chaseFunctionShouldAct) {
       if (targetRotation == currentRotation)  //if arrived
       {
@@ -104,10 +120,12 @@ public:
       } else {  //if not arrived
         Serial.print(cycleVector(currentRotation, targetRotation, 8));
         bool clockwise = (cycleVector(currentRotation, targetRotation, 8) > 0);
-        uint8_t force = 100;
-        if (justArrived) {  //oscilation detected
+        uint8_t force = chaseBasePower;
+        if (justArrived && (oscilationNumber == 0)) oscilationNumber++;
+        if (oscilationNumber > 0) {  //oscilation detected
           oscilationCD.resetTime();
-          force = uint8_t(float(force) * pow(0.7, oscilationNumber));
+          force = uint8_t(float(force) * pow(0.8, oscilationNumber - 1));
+          oscilationNumber++;
         }
         runRotationMotor(clockwise, force);
       }
@@ -124,6 +142,6 @@ public:
   }
   void update() {
     orientationUpdate();
-    chase();
+    if (enebleChase) chase();
   }
 };
