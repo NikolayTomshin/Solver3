@@ -1,5 +1,7 @@
-#include "USBAPI.h"
 #pragma once
+
+#include <EEPROM.h>
+#include "USBAPI.h"
 #include <stdint.h>
 #include "Arduino.h"
 #include "Updatable.h"
@@ -22,13 +24,16 @@ class ClawUnit : IUpdatable {
   bool ab[2];
   uint8_t targetRotation = 0;   //0..7
   uint8_t currentRotation = 0;  //0..7
-  bool enableChase = true;
-  bool chaseFunctionShouldAct;
-  bool justArrived = false;
-  uint8_t oscilationNumber = 0;
-  TimeManager oscilationCD;
-  uint8_t chaseBasePower = 255;
 
+  bool enableChase = false;  //variables for simple rotation control
+  bool shouldCheckIfActionIsNeeded = true;
+  bool justGotHere = false;
+  uint8_t oscilationNumber = 255;
+  bool arrived = false;
+  bool lowPowerMode = false;
+  uint8_t chasePower = 0;
+  TimeManager rampPower;
+  TimeManager notMoved;
 
   //variables for predicting claw rotation between ortogonal orientations
   float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
@@ -59,7 +64,7 @@ public:
   }
   void runRotationMotor(bool clockwise, uint8_t force) {
     analogWrite(mP, force);
-    digitalWrite(mD, clockwise);
+    digitalWrite(mD, !clockwise);
     motorForce = BSign(clockwise, force);
   }
   void toggleGrab() {
@@ -67,73 +72,81 @@ public:
     servoGrab.write(grabPositions[grabState]);
   }
   void orientationUpdate() {
-    bool _ab[2] = { digitalRead(eA), digitalRead(eB) };  //remember current values
-
+    bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values
     uint8_t difference = (_ab[0] != ab[0]) + (_ab[1] != ab[1]);  //count differenses
-    if (difference) {                                            //if anything different
+    if (difference) {        
+      // Serial.print(_ab[0]);
+      // Serial.print(_ab[1]);   
+      // Serial.println("end");                                  
       for (uint8_t i = 0; i < 2; i++) {
-        uint8_t potential = numberLoop(currentRotation + BSign(i, difference), 8);
-        uint8_t searchIndex = numberLoop(potential, 4);  //to find where
+        uint8_t potential = Mod(8, currentRotation + BSign(i, difference));
+        uint8_t searchIndex = Mod(4, potential);  //to find where
         if (_ab[0] == discMap[0][searchIndex])
           if (_ab[1] == discMap[1][searchIndex])  //on the map of disc new place is
             currentRotation = potential;
       }
       ab[0] = _ab[0];
       ab[1] = _ab[1];
-      chaseFunctionShouldAct = true;
+      Serial.print(currentRotation);
+      Serial.println(targetRotation);
+      shouldCheckIfActionIsNeeded = true;
     }
   }
-  void resetOscilations() {
-    justArrived = false;
-    oscilationNumber = 0;
+  void SetChase(bool _chase) {
+    enableChase = _chase;
+  }
+  void forgetPastChase() {
+    justGotHere = false;
+    lowPowerMode = false;
+    // chasePower = 255;
+    rampPower = false;
   }
   void setTarget(int8_t _target) {
-    targetRotation = numberLoop(_target, 8);
-    resetOscilations();
-    chaseFunctionShouldAct = true;
-    chaseBasePower = 255;
+    targetRotation = Mod(8, _target);
+    shouldCheckIfActionIsNeeded = true;
+    forgetPastChase();
   }
   void increaseTarget(int8_t delta) {
     setTarget(targetRotation + delta);
   }
 
   void chase() {  //chases target
-    if (oscilationNumber > 0) {
-      if (oscilationCD.isTimePassed(100)) {
-        resetOscilations();
-        if (targetRotation != currentRotation) {
-          chaseFunctionShouldAct = true;
-        } else {
-          chaseBasePower = 130;
-        }
-      }
-    } else {
-      if (targetRotation != currentRotation) {
-        chaseBasePower = 255;
+    if (justGotHere) {
+      if (notMoved.isTimePassed(100)) {
+        oscilationNumber = 0;
+        justGotHere = false;
+        arrived = true;
+        lowPowerMode = true;
       }
     }
-    if (chaseFunctionShouldAct) {
-      if (targetRotation == currentRotation)  //if arrived
-      {
-        justArrived = oscilationNumber == 0;  //if not oscilating than just arrived
-        runRotationMotor(0, 0);
-      } else {  //if not arrived
-        Serial.print(cycleVector(currentRotation, targetRotation, 8));
-        bool clockwise = (cycleVector(currentRotation, targetRotation, 8) > 0);
-        uint8_t force = chaseBasePower;
-        if (justArrived && (oscilationNumber == 0)) oscilationNumber++;
-        if (oscilationNumber > 0) {  //oscilation detected
-          oscilationCD.resetTime();
-          force = uint8_t(float(force) * pow(0.8, oscilationNumber - 1));
+    if (lowPowerMode)
+      if (!arrived) {
+      }
+    if (shouldCheckIfActionIsNeeded) {
+      uint8_t force;
+      bool clockwise;
+      if (currentRotation != targetRotation) {
+        notMoved.resetTime();
+        clockwise = (cycleDistanceVector(currentRotation, targetRotation, 8) > 0);
+        force = chasePower;
+        if (justGotHere && (oscilationNumber==0))
+          oscilationNumber = 1;
+        if (oscilationNumber) {
+          force = force * pow(0.7, oscilationNumber);
           oscilationNumber++;
         }
-        runRotationMotor(clockwise, force);
+        justGotHere = false;
+      } else {
+        // Serial.println(currentRotation);
+        justGotHere = true;
+        force = 0;
       }
-      chaseFunctionShouldAct = false;
+      runRotationMotor(clockwise, force);
+      shouldCheckIfActionIsNeeded=false;
     }
   }
   void allignRotation() {
-    runRotationMotor(true, 150);
+    runRotationMotor(true, 255);
     do {
       orientationUpdate();
     } while (ab[0] != ab[1]);
@@ -142,6 +155,6 @@ public:
   }
   void update() {
     orientationUpdate();
-    if (enebleChase) chase();
+    if (enableChase) chase();
   }
 };

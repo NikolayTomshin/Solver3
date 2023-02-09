@@ -61,6 +61,7 @@ void setup() {
   b5.attachPop(b5PopCallback);
   n1.SetAngles(0, 170, 180);
   n1.allignRotation();
+  n1.SetChase(true);
 }
 void loop() {
   if (buttonTimer.isLoop()) nexLoop(ManualList);
