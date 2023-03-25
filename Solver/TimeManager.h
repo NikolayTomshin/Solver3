@@ -57,6 +57,7 @@ class Timer : TimeManager {  //TimeManager with dedicated target time variable t
 protected:
   long targetTime;
 public:
+  Timer() {}
   Timer(long _targetTime) {
     targetTime = _targetTime;
   }

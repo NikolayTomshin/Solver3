@@ -11,8 +11,8 @@
 #include "Animation.h"
 
 // Lerp2 softStart(0, 1, 1);
-const bool discMap[2][4] = { { 0, 0, 1, 1 },
-                             { 0, 1, 1, 0 } };  //map of claw disk sectors (half)
+const bool discMap[2][4] = { { 0, 1, 1, 0 },
+                             { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
 
 class ClawUnit : IUpdatable {
   uint8_t mD, mP, eA, eB;    //Pins
@@ -27,13 +27,18 @@ class ClawUnit : IUpdatable {
 
   bool enableChase = false;  //variables for simple rotation control
   bool shouldCheckIfActionIsNeeded = true;
-  bool justGotHere = false;
-  uint8_t oscilationNumber = 255;
-  bool arrived = false;
-  bool lowPowerMode = false;
+  uint8_t arrivalState = 0;  //no data 0; over target 1; arrived 2.
+  uint8_t oscilationNumber = 0;
+  byte chaseRoutine = 0;  //0 no; 1 counting arrival; 2 ramping up power.
+  TimeManager arrivalTime = TimeManager();
+  Timer rampUpTime;
+  Lerp rampUpLerp;
+  uint8_t chaseBasePower = 255;
+  uint8_t chaseMinPower = 100;
   uint8_t chasePower = 0;
-  TimeManager rampPower;
-  TimeManager notMoved;
+  bool chaseDirection;
+
+
 
   //variables for predicting claw rotation between ortogonal orientations
   float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
@@ -54,8 +59,12 @@ public:
     eA = a;                //Pin for encoder A channel (lower track);
     eB = b;                //Pin for encoder B channel (upper track);
     servoGrab.attach(sc);  //Attach servo to sc pin, it grabs cube;
-    pinMode(mD, OUTPUT);   //Set dc control
-    pinMode(mP, OUTPUT);   //pins to output;
+    pinMode(a, INPUT);
+    pinMode(b, INPUT);
+    pinMode(mD, OUTPUT);  //Set dc control
+    pinMode(mP, OUTPUT);  //pins to output;
+
+    rampUpLerp = Lerp(chaseMinPower, chaseBasePower);
   }
   void SetAngles(uint8_t releas, uint8_t hold, uint8_t grab) {  //set angles in degrees for states of grabbing
     grabPositions[0] = releas;
@@ -67,17 +76,20 @@ public:
     digitalWrite(mD, !clockwise);
     motorForce = BSign(clockwise, force);
   }
+  void setServo(uint8_t angle) {
+    servoGrab.write(angle);
+  }
   void toggleGrab() {
     grabState = (~grabState) & 2;
-    servoGrab.write(grabPositions[grabState]);
+    setServo(grabPositions[grabState]);
   }
-  void orientationUpdate() {
+  void orientationUpdate() {                                     //updates encoder
     bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values
     uint8_t difference = (_ab[0] != ab[0]) + (_ab[1] != ab[1]);  //count differenses
-    if (difference) {        
-      // Serial.print(_ab[0]);
-      // Serial.print(_ab[1]);   
-      // Serial.println("end");                                  
+    if (difference) {
+      Serial.print(_ab[0]);
+      Serial.print(_ab[1]);
+      Serial.print(" ");
       for (uint8_t i = 0; i < 2; i++) {
         uint8_t potential = Mod(8, currentRotation + BSign(i, difference));
         uint8_t searchIndex = Mod(4, potential);  //to find where
@@ -87,63 +99,56 @@ public:
       }
       ab[0] = _ab[0];
       ab[1] = _ab[1];
-      Serial.print(currentRotation);
-      Serial.println(targetRotation);
+      Serial.println(currentRotation);
+      // Serial.println(targetRotation);
       shouldCheckIfActionIsNeeded = true;
     }
   }
   void SetChase(bool _chase) {
     enableChase = _chase;
   }
-  void forgetPastChase() {
-    justGotHere = false;
-    lowPowerMode = false;
-    // chasePower = 255;
-    rampPower = false;
-  }
   void setTarget(int8_t _target) {
     targetRotation = Mod(8, _target);
     shouldCheckIfActionIsNeeded = true;
-    forgetPastChase();
   }
   void increaseTarget(int8_t delta) {
     setTarget(targetRotation + delta);
   }
-
+  void resetChase() {
+    oscilationNumber = 0;
+    arrivalTime = 0;
+    chaseRoutine = 0;
+  }
   void chase() {  //chases target
-    if (justGotHere) {
-      if (notMoved.isTimePassed(100)) {
-        oscilationNumber = 0;
-        justGotHere = false;
-        arrived = true;
-        lowPowerMode = true;
-      }
-    }
-    if (lowPowerMode)
-      if (!arrived) {
-      }
     if (shouldCheckIfActionIsNeeded) {
-      uint8_t force;
-      bool clockwise;
-      if (currentRotation != targetRotation) {
-        notMoved.resetTime();
-        clockwise = (cycleDistanceVector(currentRotation, targetRotation, 8) > 0);
-        force = chasePower;
-        if (justGotHere && (oscilationNumber==0))
-          oscilationNumber = 1;
-        if (oscilationNumber) {
-          force = force * pow(0.7, oscilationNumber);
-          oscilationNumber++;
-        }
-        justGotHere = false;
+      if (currentRotation == targetRotation) {
+        arrivalState = 1;
+        runRotationMotor(0, 0);
+        chaseRoutine = 1;
+        arrivalTime.resetTime();
       } else {
-        // Serial.println(currentRotation);
-        justGotHere = true;
-        force = 0;
+        chaseDirection = cycleDistanceVector(currentRotation, targetRotation, 8) > 0;
       }
-      runRotationMotor(clockwise, force);
-      shouldCheckIfActionIsNeeded=false;
+
+      shouldCheckIfActionIsNeeded = false;
     }
+    if (chaseRoutine)  //chase routines
+      switch (chaseRoutine) {
+        case 1:  //Arrival
+          if (arrivalTime.isTimePassed(300)) {
+            chaseRoutine = 0;
+            arrivalState = 2;
+            oscilationNumber = 0;
+          }
+        case 2:  //RampUp
+          if (rampUpTime.isTime()) {
+            chasePower = 255;
+            chaseRoutine = 0;
+          } else {
+            chasePower = rampUpLerp.whatHere(rampUpTime.spanPassed());
+          }
+          runRotationMotor(chaseDirection, chasePower);
+      }
   }
   void allignRotation() {
     runRotationMotor(true, 255);
@@ -152,6 +157,10 @@ public:
     } while (ab[0] != ab[1]);
     currentRotation = ab[0] * 2;
     runRotationMotor(true, 0);
+  }
+  void logEncoder() {
+    Serial.print(digitalRead(eA));
+    Serial.println(digitalRead(eB));
   }
   void update() {
     orientationUpdate();
