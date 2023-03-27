@@ -19,6 +19,7 @@ TimeManager test;
 
 void b0PushCallback(void *ptr) {//grab 1
   n1.toggleGrab();
+  n2.toggleGrab();
 }
 void b2PushCallback(void *ptr) {//grab 2
   n2.toggleGrab();
@@ -26,31 +27,34 @@ void b2PushCallback(void *ptr) {//grab 2
 
 //left column
 void b1PushCallback(void *ptr) {
-  n1.runRotationMotor(true, 255);
+  //n1.runRotationMotor(true, 255);
+  n1.increaseTarget(2);
 }
 void b4PushCallback(void *ptr) {
-  n1.runRotationMotor(false, 255);
+  //n1.runRotationMotor(false, 255);
+  n1.increaseTarget(-2);
 }
 void b1PopCallback(void *ptr) {
-  n1.runRotationMotor(true, 0);
+  //n1.runRotationMotor(true, 0);
 }
 void b4PopCallback(void *ptr) {
-  n1.runRotationMotor(false, 0);
+  //n1.runRotationMotor(false, 0);
 }
 
+//right
 void b3PushCallback(void *ptr) {
-  // n1.increaseTarget(2);
-  n2.runRotationMotor(true, 255);
+  n2.increaseTarget(2);
+  //n2.runRotationMotor(true, 255);
 }
 void b5PushCallback(void *ptr) {
-  // n1.increaseTarget(-2);
-  n2.runRotationMotor(false, 255);
+   n2.increaseTarget(-2);
+  //n2.runRotationMotor(false, 255);
 }
 void b3PopCallback(void *ptr) {
-  n2.runRotationMotor(true, 0);
+  //n2.runRotationMotor(true, 0);
 }
 void b5PopCallback(void *ptr) {
-  n2.runRotationMotor(true, 0);
+  //n2.runRotationMotor(true, 0);
 }
 
 void setup() {
@@ -68,13 +72,22 @@ void setup() {
   b4.attachPop(b4PopCallback);
   b5.attachPush(b5PushCallback);
   b5.attachPop(b5PopCallback);
-  n1.SetAngles(25, 155, 165);
-  n2.SetAngles(0, 90, 150);//!!
-  n1.SetChase(false);
-  // n1.allignRotation();
+  n1.SetAngles(23, 155, 163);
+  n2.SetAngles(0, 145, 149);//!!
+  delay(500);
+  n1.setGrab(0);
+  n2.setGrab(2);
+  n1.setChase(true); //enable chase
+  n2.setChase(true);
+  n1.setChasePower(255, 160, 0.95);
+  n2.setChasePower(255, 100, 0.84);
+  n1.allignRotation();
+  delay(1000);
+  n2.allignRotation();
 }
 void loop() {
   if (buttonTimer.isLoop()) nexLoop(ManualList);
-  // n1.logEncoder();
+  // // n1.logEncoder();
+  n2.update();
   n1.update();
 }

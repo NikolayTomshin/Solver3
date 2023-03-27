@@ -17,12 +17,9 @@ int8_t BMult(bool b, int8_t a) {
   return (b ? a : 0);
 }
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength) {  //polar vector from position on to target cycle in length of cycle
-  position = Mod(8, position);
-  target = Mod(8, target);
-  bool closerThanHalf = abs(target - position) < (cycleLength / 2);
-  if (closerThanHalf) {
-    return (target - position);
-  } else {
-    return (target - position - BSign(closerThanHalf, cycleLength));
-  }
+  position = Mod(cycleLength, position);
+  target = Mod(cycleLength, target);
+  target=(target-position);
+  if (abs(target)>(cycleLength/2)) target-=BSign(target>0,cycleLength);
+  return(target);
 }
