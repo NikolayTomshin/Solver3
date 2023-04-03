@@ -9,19 +9,19 @@ NexButton b2 = NexButton(0, 3, "b2");
 NexButton b3 = NexButton(0, 4, "b3");  //страница дисплея, id и имя объекта
 NexButton b4 = NexButton(0, 5, "b4");
 NexButton b5 = NexButton(0, 6, "b5");
+NexButton b6 = NexButton(0, 7, "b6");
 
 bool stop = false;
 ClawUnit n1;
 ClawUnit n2;
-NexTouch *ManualList[] = { &b0, &b1, &b2, &b3, &b4, &b5 };  //массив ссылок на кнопки
+NexTouch *ManualList[] = { &b0, &b1, &b2, &b3, &b4, &b5, &b6 };  //массив ссылок на кнопки
 Timer buttonTimer(20);
 TimeManager test;
 
-void b0PushCallback(void *ptr) {//grab 1
+void b0PushCallback(void *ptr) {  //grab 1
   n1.toggleGrab();
-  n2.toggleGrab();
 }
-void b2PushCallback(void *ptr) {//grab 2
+void b2PushCallback(void *ptr) {  //grab 2
   n2.toggleGrab();
 }
 
@@ -47,7 +47,7 @@ void b3PushCallback(void *ptr) {
   //n2.runRotationMotor(true, 255);
 }
 void b5PushCallback(void *ptr) {
-   n2.increaseTarget(-2);
+  n2.increaseTarget(-2);
   //n2.runRotationMotor(false, 255);
 }
 void b3PopCallback(void *ptr) {
@@ -55,6 +55,13 @@ void b3PopCallback(void *ptr) {
 }
 void b5PopCallback(void *ptr) {
   //n2.runRotationMotor(true, 0);
+}
+
+void b6PushCallback(void *ptr) {
+  //n1.runRotationMotor(false, 255);
+  Serial.println("EASY");
+  n1.ease();
+  n2.ease();
 }
 
 void setup() {
@@ -72,12 +79,14 @@ void setup() {
   b4.attachPop(b4PopCallback);
   b5.attachPush(b5PushCallback);
   b5.attachPop(b5PopCallback);
-  n1.SetAngles(23, 155, 163);
-  n2.SetAngles(0, 145, 149);//!!
+  b6.attachPush(b6PushCallback);
+  n1.SetAngles(5, 128, 145);
+  n2.SetAngles(11, 140, 152);  //!!
   delay(500);
   n1.setGrab(0);
+  delay(100);
   n2.setGrab(2);
-  n1.setChase(true); //enable chase
+  n1.setChase(true);  //enable chase
   n2.setChase(true);
   n1.setChasePower(255, 160, 0.95);
   n2.setChasePower(255, 100, 0.84);

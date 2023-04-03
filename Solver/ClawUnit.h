@@ -84,10 +84,14 @@ public:
   }
   void setGrab(uint8_t a) {
     setServo(grabPositions[a]);
+    grabState = a;
+  }
+  void ease() {
+    if (grabState >0) 
+      setGrab(1+(grabState%2));
   }
   void toggleGrab() {
-    grabState = (~grabState) & 2;
-    setGrab(grabState);
+        setGrab(2*(!(grabState>0)));
   }
   void orientationUpdate() {                                     //updates encoder
     bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values
@@ -127,7 +131,7 @@ public:
   void resetChase() {
     oscilationNumber = 0;
     chaseRoutine = 0;
-    arrivalState=0;
+    arrivalState = 0;
   }
   uint8_t oscilationPower() {  // power to the motor vs oscilation number
     return (uint8_t(255 * pow(chaseDecrement, oscilationNumber)));
@@ -206,7 +210,10 @@ public:
   }
   void setChasePower(uint8_t base, uint8_t min, float dec) {
     chaseBasePower = base;
-    chaseMinPower=min;
-    chaseDecrement=dec;
+    chaseMinPower = min;
+    chaseDecrement = dec;
+  }
+  void changeLimit(int8_t i, int8_t d) {
+    grabPositions[i] += d;
   }
 };
