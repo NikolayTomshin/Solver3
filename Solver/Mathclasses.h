@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "bitCoding.h"
 #pragma once
 
 int8_t Mod(int8_t period, int8_t argument) {  //i phase length, a value
@@ -19,7 +20,8 @@ int8_t BMult(bool b, int8_t a) {
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength) {  //polar vector from position on to target cycle in length of cycle
   position = Mod(cycleLength, position);
   target = Mod(cycleLength, target);
-  target=(target-position);
-  if (abs(target)>(cycleLength/2)) target-=BSign(target>0,cycleLength);
-  return(target);
+  target = (target - position);
+  if (abs(target) > (cycleLength / 2)) target -= BSign(target > 0, cycleLength);
+  return (target);
 }
+

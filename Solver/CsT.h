@@ -1,11 +1,12 @@
 #pragma once
 #include "HardwareSerial.h"
 #include "Vec.h"
+//third math file describing Cs Transformable which are being used
 
 struct CsT : Cs {
-  CsT(int8_t i = 0, int8_t j = 1, int8_t k = 2)
+  CsT(int8_t i = 0, int8_t j = 1, int8_t k = 2)//default right basis
     : Cs(i, j, k) {}
-  void Rotate(int8_t a, int8_t oa) {
+  void rotate(int8_t axisOVIndex, int8_t rightAngles) {
     Vec v;
     for (int8_t i = 0; i < 3; i++) {
       // Serial.print("Rotating ");
@@ -15,7 +16,7 @@ struct CsT : Cs {
       v = Ovecs[ON[i]];
       // Serial.print(ON[i]);
       // Serial.print("];");
-      v.Rotate(a, oa);
+      v.rotate(axisOVIndex, rightAngles);
       // Serial.print("Rotated [");
       ON[i] = V::GetON(v);
       // Serial.print(ON[i]);

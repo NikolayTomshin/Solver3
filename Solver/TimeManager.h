@@ -1,6 +1,6 @@
-#include "USBAPI.h"
+#include "USBAPI.h" 
 #include "Arduino.h"
-#pragma once
+#pragma once //messi classes for time control
 class ITimeManager {
 public:
   ITimeManager() {}
@@ -53,7 +53,7 @@ public:
   }
 };
 
-class Timer : TimeManager {  //TimeManager with dedicated target time variable to save time on loading target time every time
+class Timer : public TimeManager {  //TimeManager with dedicated target time variable to save time on loading target time every time
 protected:
   long targetTime;
 public:

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <EEPROM.h>
-#include "USBAPI.h"
 #include <stdint.h>
 #include "Arduino.h"
 #include "Updatable.h"
@@ -10,14 +8,13 @@
 #include "TimeManager.h"
 #include "Animation.h"
 
-// Lerp2 softStart(0, 1, 1);
 const bool discMap[2][4] = { { 0, 1, 1, 0 },
                              { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
 
-class ClawUnit : IUpdatable {
-  uint8_t mD, mP, eA, eB;    //Pins
-  Servo servoGrab;           //Servo object
-  uint8_t grabPositions[3];  //Positions for claw states
+class ClawUnit : IUpdatable {  //class for claw module control
+  uint8_t mD, mP, eA, eB;      //Pins
+  Servo servoGrab;             //Servo object
+  uint8_t grabPositions[3];    //Positions for claw states
   uint8_t grabState = 0;
 
   //variables for stable control of rotation
@@ -42,7 +39,7 @@ class ClawUnit : IUpdatable {
 
 
 
-  //variables for predicting claw rotation between ortogonal orientations
+  //variables for predicting claw rotation between ortogonal orientations | unused currently
   float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
   float degreesVelocity;  // degrees/second  RealWorld
   Lerp2 dynamicDrag;      // d/s^2          {Relative  // currently can't be measured with robot hardware
@@ -50,6 +47,7 @@ class ClawUnit : IUpdatable {
   Lerp2 degreeInertia;    // j=kg*m*degree   Relative  // but values can be picked relatively to make good predictions
                           // Lerp2 is used to predict these parameters vs degree of grabing
   float cubeInertia;      // j               Relative  // each modules parametres are measured relative
+  
   float motorForce;       // j*d/s^2         base}     // to their motor torque
 
 public:
@@ -87,11 +85,11 @@ public:
     grabState = a;
   }
   void ease() {
-    if (grabState >0) 
-      setGrab(1+(grabState%2));
+    if (grabState > 0)
+      setGrab(1 + (grabState % 2));
   }
   void toggleGrab() {
-        setGrab(2*(!(grabState>0)));
+    setGrab(2 * (!(grabState > 0)));
   }
   void orientationUpdate() {                                     //updates encoder
     bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values

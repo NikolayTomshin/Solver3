@@ -3,10 +3,16 @@
 #include <stdint.h>
 #include "Vec.h"
 #include "CsT.h"
+//Super Coordinate System - way of fast cs rotation without actually doing it
+//How it works: SCS.Space -array of all possible rotations of normal basis in space. All 24 Cs can be returned by value by .CSdecod from SCS
+//function .GetLink(uint8_t v) returns index of SCs that is same as THIS Cs rotated clockwise by ortovector by index v
+//counterclockwise rotation is same as rotation clockwise by negative vector, calculate it's index somewhere else
+//so, instead of rotating every vector of cs, we store index of SCs and see which SCs it's pointing to
 
-struct SCs {
-  uint32_t Link;
-  uint8_t Basis;
+
+struct SCs { //structure for fast cs rotations
+  uint32_t Link;  //array of links coded into one uint number
+  uint8_t Basis;  //CsT values coded into one variable
   SCs(uint8_t i, uint8_t j, uint8_t k, uint8_t ii = 0, uint8_t ij = 0, uint8_t ik = 0, uint8_t i_i = 0, uint8_t i_j = 0, uint8_t i_k = 0) {
     Link = ii + (uint32_t(ij) << 5) + (uint32_t(ik) << 10) + (uint32_t(i_i) << 15) + (uint32_t(i_j) << 20) + (uint32_t(i_k) << 25);
     Basis = i + 6 * j + 36 * k;
@@ -20,7 +26,7 @@ struct SCs {
     cs.ON[0] = t % 6;
     return (cs);
   }
-  uint8_t GetLink(uint8_t v) {  //Returns Index of rotated SCs
+  uint8_t GetLink(uint8_t v) {  //Returns Index of rotated SCs by v=oVIndex clockwise
     return ((Link >> (v * 5)) & (0b11111));
   }
   // void PrintPars() {
@@ -47,7 +53,7 @@ struct SCs {
 };
 
 namespace SCS {
-uint8_t ET(uint8_t i) {  //moves to good
+uint8_t ET(uint8_t i) {  //returns number of orto rotations to origin orientations (i,j,k) by SCs index
   if ((i > 7) && (i < 15)) return 2;
   switch (i) {
     case 0: return 0;
@@ -64,7 +70,7 @@ uint8_t ET(uint8_t i) {  //moves to good
     case 23: return 2;
   }
 }
-const SCs Space[24] = { SCs(0, 1, 2, 1, 2, 3, 4, 5, 6),
+const SCs Space[24] = { SCs(0, 1, 2, 1, 2, 3, 4, 5, 6),  //map of all real ortogonal orientations
                         SCs(0, 5, 1, 7, 8, 9, 0, 10, 11),
                         SCs(2, 1, 3, 11, 12, 8, 13, 0, 14),
                         SCs(4, 0, 2, 8, 13, 15, 16, 9, 0),

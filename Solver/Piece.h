@@ -1,21 +1,26 @@
 #include "Vec.h"
 #include <stdint.h>
 #include "SCs.h"
+//file for dealing with pieces of virtual cube (8)
 
-struct Piece {
-  uint8_t DefCords;
-  Piece(uint8_t scs, Vec defvec) {    
-    SCs=scs;
-    DefCords=0;
-     for(uint8_t i=0; i<3;i++){
-     DefCords|(uint8_t(1+defvec.c[i])<<(2*i));
-     }
+namespace Pieces {
+
+
+struct Piece {//real cube piece
+  cubeVec defPos;//position in solved cube (cube Cs)
+  cubeVec curPos;//position in present time to track during cube
+  Piece(Vec pos){
+    curPos=cubeVec(pos);
   }
-  Vec Def() {//вектор
-    Vec V;
-    V.c[0] = (DefCords & 0b11)-1;//первые 2 бита 
-    V.c[1] = ((DefCords >> 2) & 0b11)-1;//вторые 2 бита 
-    V.c[2] = ((DefCords >> 4) & 0b11)-1;//третьи 2 бита 
-    return (V);
+}
+
+uint8_t indexByDefPos(Vec pos){         //corners 1234 5678; edges 1234 5678; vertical edges 1234
+  uint8_t temp;
+  temp=pos.c[0]+1+3*(pos.c[1]+1);
+  for(uint8_t i=0; i<4;i++){
+   
   }
+}
+
+Piece Sorted[20];
 }
