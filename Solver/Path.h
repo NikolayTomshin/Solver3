@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "Piece.h"
 namespace path {
 
@@ -58,14 +59,14 @@ uint8_t getPostOpearationIndex(uint8_t originIndex, path::Operation op) {
   switch (Mod(4, op.ortoAngle)) {
     default: return (originIndex);
     case 1:
-    // Serial.println("CW 1oA");
+      // Serial.println("CW 1oA");
       return (Space[originIndex].GetLink(op.ortoVector));
     case 2:
-    // Serial.println("2oA");
+      // Serial.println("2oA");
       return (Space[Space[originIndex].GetLink(op.ortoVector)].GetLink(op.ortoVector));
     case 3:
-    // Serial.println("CCW 1oA");
-      return (Space[originIndex].GetLink(Mod3(op.ortoVector + 3)));
+      // Serial.println("CCW 1oA");
+      return (Space[originIndex].GetLink((op.ortoVector + 3) % 6));
   }
 }
 

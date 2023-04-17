@@ -31,7 +31,7 @@ void setup() {
   currentState.showscs();
   currentState.showcai();
   SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
-  path::Operation op(0, 1);
+  path::Operation op(1, -1);
   currentState.applyOperation(op);
   currentState.showscs();
   currentState.showcai();
