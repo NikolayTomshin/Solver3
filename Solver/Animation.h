@@ -1,4 +1,3 @@
-
 #pragma once
 #include "TimeManager.h"
 #include "Updatable.h"

@@ -1,7 +1,4 @@
 #pragma once
-#include "HardwareSerial.h"
-#include <stdint.h>
-#include "Mathclasses.h"
 #include "Cs.h"
 //second  file for math structures
 //About vectors
@@ -55,7 +52,7 @@ struct Vec {
       temp[i] = c[i];
     }
     for (int8_t i = 0; i < 3; i++) {      //for each direction of cs basis assign coordinates
-      int8_t ov = cs->ON[i];              //current ov of cs
+      int8_t ov = cs->getComponent(i);    //current ov of cs
       c[ov % 3] = Sign(ov / 3, temp[i]);  //ov assigns coresponding coordinate of vec to coresponding direction ov%3-coordinate Sign(ov/3)- *(-1) if negative
     }
   }
@@ -65,7 +62,7 @@ struct Vec {
       temp[i] = c[i];
     }
     for (int8_t i = 0; i < 3; i++) {  //each coordinate assigns original coordinate coresponding to direction of coresponding ov of cs
-      int8_t ov = cs->ON[i];
+      int8_t ov = cs->getComponent(i);
       c[i] = Sign(ov / 3, temp[ov % 3]);
     }
   }
@@ -118,6 +115,9 @@ struct Vec {
     for (int8_t i = 0; i < 3; i++)
       c[i] += v->c[i] * multiplier;
   }
+  uint8_t norma() {
+    return (abs(c[0]) + abs(c[1]) + abs(c[2]));
+  }
 };
 
 const Vec Ovecs[6] = { Vec(1, 0, 0), Vec(0, 1, 0), Vec(0, 0, 1), Vec(-1, 0, 0), Vec(0, -1, 0), Vec(0, 0, -1) };
@@ -162,19 +162,18 @@ void OvecsCheck() {  //debug function to check if initialized right ovecs: i,j,k
 }
 }
 
-struct cubeVec { //low memory storage of cube vector
+struct cubeVec {  //low memory storage of cube vector
   uint8_t encodedValue;
-  cubeVec(Vec value) {//creation
-    encodedValue = 0;
+  cubeVec(Vec value) {  //creation
     for (uint8_t i = 0; i < 3; i++) {
-      encodedValue | (uint8_t(1 + value.c[i]) << (2 * i));
+      bitCoding::writeBased(3, value.c[i] + 1, i, encodedValue);
     }
   }
   Vec Def() {  //get vec
     Vec V;
-    V.c[0] = (encodedValue & 0b11) - 1;         //первые 2 бита
-    V.c[1] = ((encodedValue >> 2) & 0b11) - 1;  //вторые 2 бита
-    V.c[2] = ((encodedValue >> 4) & 0b11) - 1;  //третьи 2 бита
+    for (uint8_t i = 0; i < 3; i++) {
+      V.c[i] = bitCoding::getBased(3, i, encodedValue) - 1;
+    }
     return (V);
   }
 };

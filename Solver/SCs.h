@@ -1,7 +1,5 @@
-#include "HardwareSerial.h"
-#pragma once
 #include <stdint.h>
-#include "Vec.h"
+#pragma once
 #include "CsT.h"
 //Super Coordinate System - way of fast cs rotation without actually doing it
 //How it works: SCS.Space -array of all possible rotations of normal basis in space. All 24 Cs can be returned by value by .CSdecod from SCS
@@ -10,20 +8,20 @@
 //so, instead of rotating every vector of cs, we store index of SCs and see which SCs it's pointing to
 
 
-struct SCs { //structure for fast cs rotations
+struct SCs {      //structure for fast cs rotations
   uint32_t Link;  //array of links coded into one uint number
   uint8_t Basis;  //CsT values coded into one variable
-  SCs(uint8_t i, uint8_t j, uint8_t k, uint8_t ii = 0, uint8_t ij = 0, uint8_t ik = 0, uint8_t i_i = 0, uint8_t i_j = 0, uint8_t i_k = 0) {
+  SCs(uint8_t i, uint8_t j, uint8_t k, uint8_t i_i = 0, uint8_t i_j = 0, uint8_t i_k = 0, uint8_t ii = 0, uint8_t ij = 0, uint8_t ik = 0) {
     Link = ii + (uint32_t(ij) << 5) + (uint32_t(ik) << 10) + (uint32_t(i_i) << 15) + (uint32_t(i_j) << 20) + (uint32_t(i_k) << 25);
     Basis = i + 6 * j + 36 * k;
   }
   CsT CSdecode() {  //returns CsT with ovec indexes of this orientation
-    CsT cs;
+    CsT cs = CsT();
     uint8_t t = Basis;
-    cs.ON[2] = t / 36;
+    cs.setComponent(2, t / 36);
     t = t % 36;
-    cs.ON[1] = t / 6;
-    cs.ON[0] = t % 6;
+    cs.setComponent(1, t / 6);
+    cs.setComponent(0, t % 6);
     return (cs);
   }
   uint8_t GetLink(uint8_t v) {  //Returns Index of rotated SCs by v=oVIndex clockwise
@@ -94,4 +92,19 @@ const SCs Space[24] = { SCs(0, 1, 2, 1, 2, 3, 4, 5, 6),  //map of all real ortog
                         SCs(1, 0, 5, 16, 17, 7, 8, 11, 12),
                         SCs(3, 2, 1, 12, 10, 17, 15, 8, 13),
                         SCs(3, 5, 4, 15, 16, 11, 12, 14, 9) };
+CsT getCsT(uint8_t index) {
+  return (Space[index].CSdecode());
+}
+
+CsT tempCsT;
+
+void transform(Vec* target, uint8_t sCSIndex) {
+  tempCsT = Space[sCSIndex].CSdecode();
+  target->Transform(&tempCsT);
+}
+void untransform(Vec* target, uint8_t sCSIndex) {
+  tempCsT = Space[sCSIndex].CSdecode();
+  target->Untransform(&tempCsT);
+}
+
 }

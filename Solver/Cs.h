@@ -1,28 +1,34 @@
 #pragma once
-#include <stdint.h>
+#include "Mathclasses.h"
 //first file of math structures
-//Introduction of ortoCoordinate Systems that doubles as integer vector
+//Introduction of Cs -structs that store 3 encoded heximal numbers representing ortovectors
 
-struct Cs {//actually 3 int8 vector base class for coordinate systems and value vectors
-  int8_t ON[3]; //components are coordinates of 3dim vector or indexes of ortovectors of cs
-  Cs(int8_t i = 0, int8_t j = 1, int8_t k = 2) {
+struct Cs {  //actually 3 int8 vector base class for coordinate systems and value vectors
+  uint8_t ortoIndexes[2];
+  Cs(uint8_t i = 0, uint8_t j = 1, uint8_t k = 2) {
     Set(i, j, k);
   }
-  void Set(int8_t i, int8_t j, int8_t k) {
-    ON[0] = i;
-    ON[1] = j;
-    ON[2] = k;
+  void Set(uint8_t i, uint8_t j, uint8_t k) {
+    bitCoding::writeBased(6, i, 0, ortoIndexes);
+    bitCoding::writeBased(6, j, 1, ortoIndexes);
+    bitCoding::writeBased(6, k, 2, ortoIndexes);
+  }
+  uint8_t getComponent(uint8_t index) {
+    return (bitCoding::getBased(6, index, ortoIndexes));
+  }
+  void setComponent(uint8_t index, uint8_t value) {
+    bitCoding::writeBased(6, value, index, ortoIndexes);
   }
   void print() {
     Serial.print("(");
-    GetLetter(ON[0]);
+    GetLetter(getComponent(0));
     Serial.print(",");
-    GetLetter(ON[1]);
+    GetLetter(getComponent(1));
     Serial.print(",");
-    GetLetter(ON[2]);
+    GetLetter(getComponent(2));
     Serial.print(")");
   }
-  void GetLetter(int8_t F) { //function for getting string of ortovector by index
+  void GetLetter(int8_t F) {  //function for getting string of ortovector by index
     switch (F) {
       case 0:
         Serial.print("i");

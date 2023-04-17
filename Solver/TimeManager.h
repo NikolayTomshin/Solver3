@@ -1,6 +1,5 @@
-#include "USBAPI.h" 
-#include "Arduino.h"
-#pragma once //messi classes for time control
+#pragma once 
+#include <Arduino.h>
 class ITimeManager {
 public:
   ITimeManager() {}

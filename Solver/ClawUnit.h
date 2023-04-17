@@ -1,11 +1,6 @@
 #pragma once
-
-#include <stdint.h>
-#include "Arduino.h"
-#include "Updatable.h"
+#include "Cube.h"
 #include <Servo.h>
-#include "Mathclasses.h"
-#include "TimeManager.h"
 #include "Animation.h"
 
 const bool discMap[2][4] = { { 0, 1, 1, 0 },

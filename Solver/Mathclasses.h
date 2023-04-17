@@ -1,6 +1,7 @@
-#include <stdint.h>
-#include "bitCoding.h"
 #pragma once
+#include "bitCoding.h"
+#include <math.h>
+
 
 int8_t Mod(int8_t period, int8_t argument) {  //i phase length, a value
   return ((argument - (argument / period - 1) * period) % period);

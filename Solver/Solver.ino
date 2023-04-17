@@ -1,8 +1,7 @@
 // #include "ClawUnit.h"
 // #include "TimeManager.h"
 // #include "CsT.h"
-#include "Mathclasses.h"
-
+#include "Awareness.h"
 
 void setup() {
   Serial.begin(9600);
@@ -25,18 +24,31 @@ void setup() {
   while (!Serial)
     ;
 
-  const uint8_t n = 5;
-  uint8_t arr[n] = { 0, 1, 4, 3, 2 };
-  uint8_t code[2] = { 0 };
-  uint8_t empty[n];
-  // for (int i = 0; i < n; i++) {
-  //   arr[i] = 0;
-  // }
-  bitCoding::printArray(arr, 0, 4, true);
-  bitCoding::encodePermutation(5, arr, code);
-  bitCoding::printArray(code, 0, 1, false);
-  bitCoding::decodePermutation(5, code, empty);
-  bitCoding::printArray(empty, 0, 4, true);
+  CsT temp;
+  Vec checkV(1, 1, 1);
+  Cube::resetRealPieces();
+  currentState.updateCAI();
+  currentState.showscs();
+  currentState.showcai();
+  SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
+  path::Operation op(0, 1);
+  currentState.applyOperation(op);
+  currentState.showscs();
+  currentState.showcai();
+  SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
+  // int8_t x, y, z;
+  // for (x = -1; x < 2; x++) {
+  //   for (z = 1; z > -2; z = z - 1 - (x == 0)) {
+  //     for (y = -1; y < 2; y = y + 1 + ((x == 0) || (z == 0))) {
+  //       Vec iterationVec(x, y, z);
+  //       iterationVec.Cords();
+  //       uint8_t ind = Cube::linearIndex(iterationVec);
+  //       Serial.print(ind);
+  //       Serial.print("->");
+  //       Cube::unfoldLinIndex(ind).Cords();
+  //       Serial.println();
+  //     }
+  //   }
 }
 void loop() {
   // // n1.logEncoder();
