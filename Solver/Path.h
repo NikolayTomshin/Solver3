@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "Piece.h"
-namespace path {
 
 struct Operation {
   uint8_t ortoVector;  //vector pointing to side being rotated from the center
@@ -9,9 +8,12 @@ struct Operation {
     ortoVector = value / 3;
     ortoAngle = value % 3 + 1;
   }
-  Operation(uint8_t oV, int8_t oA) {
+  set(uint8_t oV, int8_t oA) {
     ortoVector = oV;
     ortoAngle = oA;
+  }
+  Operation(uint8_t oV, int8_t oA) {
+    set(oV, oA);
   }
   void reverse() {
     ortoAngle = -ortoAngle;
@@ -20,6 +22,9 @@ struct Operation {
     return (ortoVector * 3 + Mod(4, ortoAngle) - 1);
   }
 };
+namespace path {
+
+
 struct Branch {
   uint8_t rating[6];          //permutation of actions sorted by descending quality of result
   uint8_t prevAndPresent[2];  //5 bit index of previous action and 4 bit index of last attempted action from rating
@@ -51,7 +56,6 @@ struct Branch {
     return (Operation(uint8_t(operation)));
   }
 };
-
 }
 namespace SCS {
 
@@ -69,5 +73,4 @@ uint8_t getPostOpearationIndex(uint8_t originIndex, path::Operation op) {
       return (Space[originIndex].GetLink((op.ortoVector + 3) % 6));
   }
 }
-
 }

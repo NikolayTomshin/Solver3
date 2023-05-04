@@ -1,3 +1,4 @@
+#include "HardwareSerial.h"
 #include "Arduino.h"
 #include <stdint.h>
 #pragma once
@@ -95,6 +96,9 @@ struct State {
   }
   void applyOperation(path::Operation op) {
     CsT opCs(op.ortoVector, 2);  //cs with k vector same as op vector
+    Serial.print("opCs:");
+    opCs.print();
+    Serial.println();
     int8_t x, y;
     for (x = 0; x < 13; x++) {
       cAIcopy[x] = coordinateArrangedIndexes[x];  //copy preparation
@@ -102,34 +106,74 @@ struct State {
     for (x = -1; x < 2; x++) {
       for (y = -1; y < 2; y = y + 1 + (x == 0)) {  //+2 если x=0 что пропускает центр квадрата 3x3
         Vec iterationVec(x, y, 1);                 //перебор координат деталек относящихся к стороне на стороне +z
-        iterationVec.Transform(&opCs);             //координаты преобразуются в координаты стороны операции
+        iterationVec.Cords();
+        Serial.print("/iter\t");
+        iterationVec.Transform(&opCs);  //координаты преобразуются в координаты стороны операции
+        iterationVec.Cords();
+        Serial.print("/target\t");
         uint8_t pieceIndex = getCAIcopy(linearIndex(iterationVec));                 //код детальки
         uint8_t newSCsIndex = SCS::getPostOpearationIndex(getscs(pieceIndex), op);  //новый код scs детальки
         bitCoding::writeBased(24, newSCsIndex, pieceIndex, scs);                    //запись новой ориантации
-
+        //* код для быстрой перезаписи изменений в CAI
         SCS::transform(&iterationVec, newSCsIndex);  //запись нового расположения в итерационный вектор
+        // iterationVec.Cords();
+        // Serial.println("/newplace");
+
         bitCoding::writeBased(20, pieceIndex, linearIndex(iterationVec), coordinateArrangedIndexes);
         //запись индекса детальки в коорд массив
         //т.к. ссылки деталей находятся по отдельной копии координатного массива, изменение в оригинальном массиве не портит результат
+      */
       }
+      updateCAI();
     }
     //в итоге итераций по 8 деталькам стороны операции, поворачиваются их ориентации в массиве состояния
     //и меняются ссылки в координатном массиве в соответствии с этим
   }
-  void printSliced(CsT cubeCs) {  //show scs kinda in 3d
-    int8_t x, y, z;
+  void printSliced(bool piOrSc, CsT cubeCs = CsT()) {  //show scs kinda in 3d
+    Serial.println();
+    Serial.print("Slice");
+    int8_t x, y, z, o;
     for (x = -1; x < 2; x++) {
-      for (uint8_t o = (1 - x) * 2; o > 0; o--) Serial.print(" ");
-      for (z = 1; z > -1; z = z - 1 - (x == 0)) {
-        for (y = -1; y < 2; y = y + 1 + (x == 0) | (z == 0)) {
+      for (z = 1; z >= -1; z--) {
+        for (o = (1 - x); o > 0; o--) Serial.print("\t");  //отступы
+        for (y = -1; y < 2; y++) {
           Vec iterationVec(x, y, z);
-          Serial.print(getscs(linearIndex(iterationVec)));
-          Serial.print(" ");
+          iterationVec.Transform(&cubeCs);
+          o = (x == 0) + (y == 0) + (z == 0);
+          if (o < 2) {  //if piece is present
+            if (piOrSc) {
+              Serial.print(getCAI(linearIndex(iterationVec)));  //print piece index
+            } else {
+              Serial.print(getscs(linearIndex(iterationVec)));  //print scs
+            }
+          } else if (o == 2) {
+            if (x == 1) Serial.print("+X");
+            if (x == -1) Serial.print("-x");
+            if (y == 1) Serial.print("+Y");
+            if (y == -1) Serial.print("-y");
+            if (z == 1) Serial.print("+Z");
+            if (z == -1) Serial.print("-z");
+          }
+          Serial.print("\t");
         }
+        Serial.println();
       }
-      Serial.println();
+      Serial.println("-----------------------");
     }
   }
 };
+/*
+  Задача оценки состояния состоит из множества частей
+  Текущая идея: подсчёт групп смежных деталек и начисление очков за их собранность
+  Сначала нужно определить эти группы. К
+  */
+// struct PieceGroup {
+//   /*
+//   Характеристики группы: ориентация, численность
+//   */
+// };
 
+// State::rate() {
+//   for (int8)
+// }
 }

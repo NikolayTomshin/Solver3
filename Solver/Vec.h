@@ -1,3 +1,4 @@
+#include <stdint.h>
 #pragma once
 #include "Cs.h"
 //second  file for math structures
@@ -48,12 +49,17 @@ struct Vec {
   }
   void Transform(Cs *cs) {  //Transform this vector to this CS.  This vector viewed in ACS if constructed in CS.
     int8_t temp[3];
-    for (int8_t i = 0; i < 3; i++) {  //Save cords
+    uint8_t i;
+    for (i = 0; i < 3; i++) {  //Save cords
       temp[i] = c[i];
     }
-    for (int8_t i = 0; i < 3; i++) {      //for each direction of cs basis assign coordinates
-      int8_t ov = cs->getComponent(i);    //current ov of cs
-      c[ov % 3] = Sign(ov / 3, temp[i]);  //ov assigns coresponding coordinate of vec to coresponding direction ov%3-coordinate Sign(ov/3)- *(-1) if negative
+    for (i = 0; i < 3; i++) {  //for each direction of cs basis assign saved temp value to corresponding vec component
+      uint8_t ov = cs->getComponent(i);
+      if (ov < 3) {  //if direction is positive
+        c[ov % 3] = temp[i];//write positive
+      } else {
+        c[ov % 3] = -temp[i];//write negative
+      }
     }
   }
   void Untransform(Cs *cs) {  //Untransform this vector to CS. This vector viewed in CS if constructed in ACS.
@@ -109,7 +115,7 @@ struct Vec {
     Serial.print(c[1]);
     Serial.print(";");
     Serial.print(c[2]);
-    Serial.println(")");
+    Serial.print(")");
   }
   void Add(Vec *v, int8_t multiplier = 1) {  //Add vector*m to this vector
     for (int8_t i = 0; i < 3; i++)

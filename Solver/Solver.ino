@@ -24,18 +24,31 @@ void setup() {
   while (!Serial)
     ;
 
-  CsT temp;
-  Vec checkV(1, 1, 1);
+  // CsT temp;
+  // for (uint8_t i = 0; i < 20; i++) {
+  //   Serial.print(i);
+  //   Serial.print("=");
+  //   Vec checkV = Cube::unfoldLinIndex(i);
+  //   Serial.println(Cube::linearIndex(checkV));
+  // }
+  uint8_t ov=1;
+  bool showI=true;
   Cube::resetRealPieces();
   currentState.updateCAI();
-  currentState.showscs();
-  currentState.showcai();
-  SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
-  path::Operation op(1, -1);
+  currentState.printSliced(showI);
+  // SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
+  path::Operation op(ov, -1);
   currentState.applyOperation(op);
-  currentState.showscs();
-  currentState.showcai();
-  SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
+  currentState.printSliced(showI);
+  op.set(ov+1,-1);
+  currentState.applyOperation(op);
+  currentState.printSliced(showI);
+  // op=path::Operation(2,-1);
+  // currentState.applyOperation(op);
+  // currentState.applyOperation(op);
+  // currentState.printSliced();
+  // SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
+  // SCS::getCsT(currentState.getscsByVec(Vec(1, -1, 1))).print();
   // int8_t x, y, z;
   // for (x = -1; x < 2; x++) {
   //   for (z = 1; z > -2; z = z - 1 - (x == 0)) {

@@ -8,46 +8,21 @@
 //so, instead of rotating every vector of cs, we store index of SCs and see which SCs it's pointing to
 
 
-struct SCs {      //structure for fast cs rotations
-  uint32_t Link;  //array of links coded into one uint number
-  uint8_t Basis;  //CsT values coded into one variable
-  SCs(uint8_t i, uint8_t j, uint8_t k, uint8_t i_i = 0, uint8_t i_j = 0, uint8_t i_k = 0, uint8_t ii = 0, uint8_t ij = 0, uint8_t ik = 0) {
-    Link = ii + (uint32_t(ij) << 5) + (uint32_t(ik) << 10) + (uint32_t(i_i) << 15) + (uint32_t(i_j) << 20) + (uint32_t(i_k) << 25);
-    Basis = i + 6 * j + 36 * k;
+struct SCs {                //structure for orientation space storage
+  uint8_t link[4] = { 0 };  //bitcoded links
+  CsT basis;                //Straightforward CsT as value
+  SCs(CsT cs, uint8_t _link[6]) {
+    basis = cs;
+    for (uint8_t ov = 0; ov < 6; ov++) {
+      setLink(ov, _link[ov]);
+    }
   }
-  CsT CSdecode() {  //returns CsT with ovec indexes of this orientation
-    CsT cs = CsT();
-    uint8_t t = Basis;
-    cs.setComponent(2, t / 36);
-    t = t % 36;
-    cs.setComponent(1, t / 6);
-    cs.setComponent(0, t % 6);
-    return (cs);
+  getLink(uint8_t ov) {
+    bitCoding::getBased(24, ov, link);
   }
-  uint8_t GetLink(uint8_t v) {  //Returns Index of rotated SCs by v=oVIndex clockwise
-    return ((Link >> (v * 5)) & (0b11111));
+  setLink(uint8_t ov, uint8_t sindex) {
+    bitCoding::writeBased(24, sindex, ov, link);
   }
-  // void PrintPars() {
-  //   Serial.print("(");  //(Cs(i,j,k),)
-  //   Serial.print(Basis%6);
-  //   Serial.print(",");
-  //   Serial.print(Basis%36/6);
-  //   Serial.print(",");
-  //   Serial.print(Basis/36);
-  //   Serial.print(",");
-  //   Serial.print(GetLink(0));
-  //   Serial.print(",");
-  //   Serial.print(GetLink(1));
-  //   Serial.print(",");
-  //   Serial.print(GetLink(2));
-  //   Serial.print(",");
-  //   Serial.print(GetLink(3));
-  //   Serial.print(",");
-  //   Serial.print(GetLink(4));
-  //   Serial.print(",");
-  //   Serial.print(GetLink(5));
-  //   Serial.print(")");
-  // }
 };
 
 namespace SCS {
@@ -93,18 +68,17 @@ const SCs Space[24] = { SCs(0, 1, 2, 1, 2, 3, 4, 5, 6),  //map of all real ortog
                         SCs(3, 2, 1, 12, 10, 17, 15, 8, 13),
                         SCs(3, 5, 4, 15, 16, 11, 12, 14, 9) };
 CsT getCsT(uint8_t index) {
-  return (Space[index].CSdecode());
+  return (Space[index].basis);
 }
 
 CsT tempCsT;
 
 void transform(Vec* target, uint8_t sCSIndex) {
-  tempCsT = Space[sCSIndex].CSdecode();
-  target->Transform(&tempCsT);
+  target->Transform(&Space[sCSIndex].basis);
 }
 void untransform(Vec* target, uint8_t sCSIndex) {
   tempCsT = Space[sCSIndex].CSdecode();
-  target->Untransform(&tempCsT);
+  target->Untransform(&Space[sCSIndex].basis);
 }
 
 }

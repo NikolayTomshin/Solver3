@@ -14,3 +14,5 @@ path::Branch solveTree[20];  //кодирование пути сборки
 
 Cube::State currentState;  //current state
 Cube::State newState;      //new state for fast checking
+
+
