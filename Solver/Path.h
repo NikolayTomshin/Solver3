@@ -9,8 +9,8 @@ struct Operation {
     ortoAngle = value % 3 + 1;
   }
   set(uint8_t oV, int8_t oA) {
-    ortoVector = oV;
-    ortoAngle = oA;
+    ortoVector = oV % 6;
+    ortoAngle = oA % 4;
   }
   Operation(uint8_t oV, int8_t oA) {
     set(oV, oA);
@@ -20,6 +20,11 @@ struct Operation {
   }
   uint8_t getEncoded() {
     return (ortoVector * 3 + Mod(4, ortoAngle) - 1);
+  }
+  void print() {
+    Serial.print(ortoVector);
+    Serial.print(" ");
+    Serial.print(ortoAngle);
   }
 };
 namespace path {
@@ -59,18 +64,18 @@ struct Branch {
 }
 namespace SCS {
 
-uint8_t getPostOpearationIndex(uint8_t originIndex, path::Operation op) {
+uint8_t getPostOpearationIndex(uint8_t originIndex, Operation op) {
   switch (Mod(4, op.ortoAngle)) {
     default: return (originIndex);
     case 1:
       // Serial.println("CW 1oA");
-      return (Space[originIndex].GetLink(op.ortoVector));
+      return (Space[originIndex].getLink(op.ortoVector));
     case 2:
       // Serial.println("2oA");
-      return (Space[Space[originIndex].GetLink(op.ortoVector)].GetLink(op.ortoVector));
+      return (Space[Space[originIndex].getLink(op.ortoVector)].getLink(op.ortoVector));
     case 3:
       // Serial.println("CCW 1oA");
-      return (Space[originIndex].GetLink((op.ortoVector + 3) % 6));
+      return (Space[originIndex].getLink((op.ortoVector + 3) % 6));
   }
 }
 }

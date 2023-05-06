@@ -40,7 +40,7 @@ Vec unfoldLinIndex(uint8_t linindex) {
 
 Piece RealPieces[20];  //real cube pieces 20 подвижных деталек которые двигаются в системе куба
 
-void resetRealPieces() {
+void resetRealPieces() {  //each piece on it's default pos and def pos set as unfolded linear index
   for (uint8_t i = 0; i < 20; i++) {
     RealPieces[i] = Piece(unfoldLinIndex(i), 0);
   }
@@ -51,20 +51,29 @@ void resetRealPieces() {
 struct State {
   uint8_t scs[13];                        //compressed array of SCS indexes of pieces ordered by real array
   uint8_t coordinateArrangedIndexes[13];  //compressed array of real pieces indexes in order of 3d lineared coordinates
-  inline static uint8_t cAIcopy[13];      //cAI copy
+  inline static uint8_t cAIcopy[13];      //temp cAI copy for applying operations
 
   State() {  //собранное состояние
     for (uint8_t i = 0; i < 13; i++) {
       scs[i] = 0;
     }
+    updateCAI();
   }
   uint8_t getscs(uint8_t index) {
     return (bitCoding::getBased(20, index, scs));
   }
+  void setscs(uint8_t pieceIndex, uint8_t newSCsIndex) {
+    bitCoding::writeBased(24, newSCsIndex, pieceIndex, scs);
+  }
   void showscs() {
     for (uint8_t i = 0; i < 20; i++) {
+      Serial.print(i);
+      Serial.print("\t");
+    }
+    Serial.println();
+    for (uint8_t i = 0; i < 20; i++) {
       Serial.print(getscs(i));
-      Serial.print(",");
+      Serial.print("\t");
     }
     Serial.println();
   }
@@ -78,27 +87,34 @@ struct State {
       setCAI(i, linearIndex(temp));      //запись индекса в соответствующий по координатам элемент
     }
   }
-  uint8_t getCAI(uint8_t index) {
+  uint8_t getCAI(uint8_t index) {  //get CAI value(piece index) by linear index
     return (bitCoding::getBased(24, index, coordinateArrangedIndexes));
   }
-  void showcai() {
+  void showcai() {  //print cai string
+    for (uint8_t i = 0; i < 20; i++) {
+      Serial.print(i);
+      Serial.print("\t");
+    }
+    Serial.println();
     for (uint8_t i = 0; i < 20; i++) {
       Serial.print(getCAI(i));
-      Serial.print(",");
+      Serial.print("\t");
     }
     Serial.println();
   }
-  uint8_t getscsByVec(Vec vec) {
+  uint8_t getscsByVec(Vec vec) {  //get scs index of piece by vector in this state
     return (getscs(getCAI(linearIndex(vec))));
   }
-  static uint8_t getCAIcopy(uint8_t index) {
+  static uint8_t getCAIcopy(uint8_t index) {  //get CAI value(piece index) by linear index from copied array
     return (bitCoding::getBased(24, index, cAIcopy));
   }
-  void applyOperation(path::Operation op) {
+  void applyOperation(Operation op) {  //modify state's scs and CAI according to operation(rotation of one side)
+
     CsT opCs(op.ortoVector, 2);  //cs with k vector same as op vector
-    Serial.print("opCs:");
-    opCs.print();
-    Serial.println();
+
+    // Serial.print("opCs:");  //making sure opCs third component same as op vector
+    // opCs.print();
+    // Serial.println();
     int8_t x, y;
     for (x = 0; x < 13; x++) {
       cAIcopy[x] = coordinateArrangedIndexes[x];  //copy preparation
@@ -106,29 +122,30 @@ struct State {
     for (x = -1; x < 2; x++) {
       for (y = -1; y < 2; y = y + 1 + (x == 0)) {  //+2 если x=0 что пропускает центр квадрата 3x3
         Vec iterationVec(x, y, 1);                 //перебор координат деталек относящихся к стороне на стороне +z
-        iterationVec.Cords();
-        Serial.print("/iter\t");
+        // iterationVec.Cords();
+        // Serial.print("/iter\t");        //локальные координаты
         iterationVec.Transform(&opCs);  //координаты преобразуются в координаты стороны операции
-        iterationVec.Cords();
-        Serial.print("/target\t");
-        uint8_t pieceIndex = getCAIcopy(linearIndex(iterationVec));                 //код детальки
+        // iterationVec.Cords();
+        // Serial.print("/Abs\t");                                      //реальные координаты
+        uint8_t pieceIndex = getCAIcopy(linearIndex(iterationVec));  //код детальки по вектору
+        // Serial.print(pieceIndex);
+        // Serial.print("pI\t");
         uint8_t newSCsIndex = SCS::getPostOpearationIndex(getscs(pieceIndex), op);  //новый код scs детальки
-        bitCoding::writeBased(24, newSCsIndex, pieceIndex, scs);                    //запись новой ориантации
-        //* код для быстрой перезаписи изменений в CAI
-        SCS::transform(&iterationVec, newSCsIndex);  //запись нового расположения в итерационный вектор
+        // Serial.print(newSCsIndex);
+        // Serial.print("nSCS\t");
+        setscs(pieceIndex, newSCsIndex);  //запись новой ориантации
+        iterationVec.rotate(op.ortoVector, op.ortoAngle);  //запись нового расположения в итерационный вектор
         // iterationVec.Cords();
         // Serial.println("/newplace");
-
-        bitCoding::writeBased(20, pieceIndex, linearIndex(iterationVec), coordinateArrangedIndexes);
+        setCAI(pieceIndex, linearIndex(iterationVec));
         //запись индекса детальки в коорд массив
         //т.к. ссылки деталей находятся по отдельной копии координатного массива, изменение в оригинальном массиве не портит результат
-      */
       }
-      updateCAI();
     }
     //в итоге итераций по 8 деталькам стороны операции, поворачиваются их ориентации в массиве состояния
     //и меняются ссылки в координатном массиве в соответствии с этим
   }
+
   void printSliced(bool piOrSc, CsT cubeCs = CsT()) {  //show scs kinda in 3d
     Serial.println();
     Serial.print("Slice");
@@ -138,13 +155,13 @@ struct State {
         for (o = (1 - x); o > 0; o--) Serial.print("\t");  //отступы
         for (y = -1; y < 2; y++) {
           Vec iterationVec(x, y, z);
-          iterationVec.Transform(&cubeCs);
+          iterationVec.Untransform(&cubeCs);
           o = (x == 0) + (y == 0) + (z == 0);
           if (o < 2) {  //if piece is present
             if (piOrSc) {
               Serial.print(getCAI(linearIndex(iterationVec)));  //print piece index
             } else {
-              Serial.print(getscs(linearIndex(iterationVec)));  //print scs
+              Serial.print(getscsByVec(iterationVec));  //print scs
             }
           } else if (o == 2) {
             if (x == 1) Serial.print("+X");

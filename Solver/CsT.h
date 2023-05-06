@@ -36,6 +36,9 @@ struct CsT : public Cs {
       // Serial.println("]");
     }
   }
+  void rotate(uint8_t ov) {
+    rotate(ov % 3, 1 - 2 * (ov / 3));
+  }
   bool Compare(Cs* cs) {  //Равенство с другой
     // Serial.print("Comparing");
     // Print();

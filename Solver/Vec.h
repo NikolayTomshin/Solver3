@@ -47,29 +47,33 @@ struct Vec {
       s += ((a->c[i]) * (b->c[i]));
     return (s);
   }
-  void Transform(Cs *cs) {  //Transform this vector to this CS.  This vector viewed in ACS if constructed in CS.
+  void Transform(Cs *cs) {  //rebuild in cs
     int8_t temp[3];
     uint8_t i;
     for (i = 0; i < 3; i++) {  //Save cords
       temp[i] = c[i];
     }
-    for (i = 0; i < 3; i++) {  //for each direction of cs basis assign saved temp value to corresponding vec component
+    for (i = 0; i < 3; i++) { 
       uint8_t ov = cs->getComponent(i);
-      if (ov < 3) {  //if direction is positive
-        c[ov % 3] = temp[i];//write positive
+      if (ov < 3) {           //if direction is positive
+        c[ov % 3] = temp[i];  //write positive
       } else {
-        c[ov % 3] = -temp[i];//write negative
+        c[ov % 3] = -temp[i];  //write negative
       }
     }
   }
-  void Untransform(Cs *cs) {  //Untransform this vector to CS. This vector viewed in CS if constructed in ACS.
+  void Untransform(Cs *cs) {  //Rebuild from cs
     int8_t temp[3];
     for (int8_t i = 0; i < 3; i++) {  //Save cords
       temp[i] = c[i];
     }
-    for (int8_t i = 0; i < 3; i++) {  //each coordinate assigns original coordinate coresponding to direction of coresponding ov of cs
+    for (int8_t i = 0; i < 3; i++) {
       int8_t ov = cs->getComponent(i);
-      c[i] = Sign(ov / 3, temp[ov % 3]);
+      if (ov < 3) {           //if direction is positive
+        c[i] = temp[ov % 3];  //write positive
+      } else {
+        c[i] = -temp[ov % 3];  //write negative
+      }
     }
   }
   void rotate(int8_t axisOVIndex, int8_t rightAngles) {  //Rotates vector along ov axis for specified number of orto angles

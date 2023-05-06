@@ -23,45 +23,21 @@ void setup() {
   // n2.allignRotation();
   while (!Serial)
     ;
-
-  // CsT temp;
-  // for (uint8_t i = 0; i < 20; i++) {
-  //   Serial.print(i);
-  //   Serial.print("=");
-  //   Vec checkV = Cube::unfoldLinIndex(i);
-  //   Serial.println(Cube::linearIndex(checkV));
-  // }
-  uint8_t ov=1;
-  bool showI=true;
+  uint8_t i = 0;
   Cube::resetRealPieces();
   currentState.updateCAI();
-  currentState.printSliced(showI);
-  // SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
-  path::Operation op(ov, -1);
-  currentState.applyOperation(op);
-  currentState.printSliced(showI);
-  op.set(ov+1,-1);
-  currentState.applyOperation(op);
-  currentState.printSliced(showI);
-  // op=path::Operation(2,-1);
-  // currentState.applyOperation(op);
-  // currentState.applyOperation(op);
-  // currentState.printSliced();
-  // SCS::getCsT(currentState.getscsByVec(Vec(1, 1, 1))).print();
-  // SCS::getCsT(currentState.getscsByVec(Vec(1, -1, 1))).print();
-  // int8_t x, y, z;
-  // for (x = -1; x < 2; x++) {
-  //   for (z = 1; z > -2; z = z - 1 - (x == 0)) {
-  //     for (y = -1; y < 2; y = y + 1 + ((x == 0) || (z == 0))) {
-  //       Vec iterationVec(x, y, z);
-  //       iterationVec.Cords();
-  //       uint8_t ind = Cube::linearIndex(iterationVec);
-  //       Serial.print(ind);
-  //       Serial.print("->");
-  //       Cube::unfoldLinIndex(ind).Cords();
-  //       Serial.println();
-  //     }
-  //   }
+  while (true) {
+    currentState.printSliced(false);
+    // SCS::Space[i].basis.print();
+    
+    Serial.println();
+    while (Serial.available() < 2) {}  //waiit for input
+    uint8_t ov = Serial.read() - 48, oa = Serial.read() - 48;
+    Operation op(ov, oa);
+    // i = SCS::getPostOpearationIndex(i, op);
+    op.print();
+    currentState.applyOperation(op);
+  }
 }
 void loop() {
   // // n1.logEncoder();
