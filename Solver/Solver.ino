@@ -23,21 +23,18 @@ void setup() {
   // n2.allignRotation();
   while (!Serial)
     ;
-  uint8_t i = 0;
-  Cube::resetRealPieces();
-  currentState.updateCAI();
-  while (true) {
-    currentState.printSliced(false);
-    // SCS::Space[i].basis.print();
-    
-    Serial.println();
-    while (Serial.available() < 2) {}  //waiit for input
-    uint8_t ov = Serial.read() - 48, oa = Serial.read() - 48;
-    Operation op(ov, oa);
-    // i = SCS::getPostOpearationIndex(i, op);
-    op.print();
-    currentState.applyOperation(op);
+
+  Serial.println("begin");
+  for (uint8_t i = 0; i < 24; i++) {
+    OperationPathStack solution = getShortestPathEdge(i);
+    Serial.print(i);
+    SCS::getCsT(i).print();
+    solution.print();
+    sPnl();
+    // Serial.println("Printed");
+    // Serial.println("Deleted");
   }
+  Serial.println("the end.");
 }
 void loop() {
   // // n1.logEncoder();

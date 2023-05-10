@@ -1,5 +1,6 @@
 #pragma once
 #include "Mathclasses.h"
+#include "bitCoding.h"
 //first file of math structures
 //Introduction of Cs -structs that store 3 encoded heximal numbers representing ortovectors
 

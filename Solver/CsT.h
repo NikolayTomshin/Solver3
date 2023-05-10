@@ -17,6 +17,12 @@ struct CsT : public Cs {
       ortovector = next;
     }
   }
+  CsT(uint8_t i, uint8_t j, uint8_t k, uint8_t missingComponent)
+    : Cs(i, j, k) {  //create CsT by 2 defining orts and choosen missingComponent calculated
+    Vec missingVec = Ovecs[getComponent((missingComponent + 1) % 3)];  //get 2nd ort before missing
+    missingVec.rotate(getComponent((missingComponent + 2) % 3), -1);   //rotate it around next ort CCwise and get missing ort
+    setComponent(missingComponent, V::GetON(missingVec));              //assign missingComponent as ortonumber of this vector
+  }
   CsT(int8_t i = 0, int8_t j = 1, int8_t k = 2)  //default right basis
     : Cs(i, j, k) {}
   void rotate(int8_t axisOVIndex, int8_t rightAngles) {
@@ -48,5 +54,19 @@ struct CsT : public Cs {
       if (getComponent(i) != cs->getComponent(i)) return (false);
     }
     return (true);
+  }
+  void transform(Cs* cs) {
+    for (uint8_t i; i < 3; i++) {
+      Vec component = Ovecs[getComponent(i)];  //get Vec ortovector
+      component.Transform(cs);                 //transform vector
+      setComponent(i, V::GetON(component));    //set new Ov index
+    }
+  }
+  void untransform(Cs* cs) {
+    for (uint8_t i; i < 3; i++) {
+      Vec component = Ovecs[getComponent(i)];  //get Vec ortovector
+      component.Untransform(cs);               //untransform vector
+      setComponent(i, V::GetON(component));    //set new Ov index
+    }
   }
 };
