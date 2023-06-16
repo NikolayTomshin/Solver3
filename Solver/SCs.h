@@ -24,7 +24,6 @@ uint8_t getSCindex(CsT cs);
 CsT getCsT(uint8_t index);
 void transform(Vec* target, uint8_t sCSIndex);
 void untransform(Vec* target, uint8_t sCSIndex);
-
 void generateSCs();
 
 }

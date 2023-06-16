@@ -1,5 +1,5 @@
 #pragma once
-#include <HardwareSerial.h>
+#include "Arduino.h"
 #include <stdint.h>
 
 namespace bitCoding {

@@ -38,3 +38,4 @@ struct Branch {
 
 }  //ns path
 
+OperationPathStack getShortestPathEdge(uint8_t beginningScindex);

@@ -12,8 +12,9 @@ int8_t Mod3(int8_t argument) {
 int8_t Sign(int8_t i, int8_t argument) {  //even positive, odd negative
   return (((i % 2) == 0) ? argument : -argument);
 }
-int8_t BSign(bool b, int8_t a) {  //false positive, true negative
-  return (b * 2 - 1) * a;
+int8_t BSign(bool negative, int8_t a) {  //false positive, true negative
+  if (negative) return -a;
+  else return a;
 }
 int8_t BMult(bool b, int8_t a) {
   return (b ? a : 0);

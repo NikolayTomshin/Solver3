@@ -6,14 +6,28 @@
 const bool discMap[2][4] = { { 0, 1, 1, 0 },
                              { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
 
-class ClawUnit : IUpdatable {  //class for claw module control
-  uint8_t mD, mP, eA, eB;      //Pins
-  Servo servoGrab;             //Servo object
-  uint8_t grabPositions[3];    //Positions for claw states
+struct ClawSetting {              //copy buffer
+  uint8_t mD, mP, eA, eB;         //Pins
+  bool reverseDirection = false;  //reverse direction
+
+  uint8_t grabPositions[3];
+
+  uint8_t decrement;
+  uint8_t sustainable;
+  uint8_t min;
+};
+
+class ClawUnit : IUpdatable {     //class for claw module control
+  uint8_t mD, mP, eA, eB;         //Pins
+  bool reverseDirection = false;  //reverse direction
+  Servo servoGrab;                //Servo object
+
+  uint8_t grabPositions[3];  //Positions for claw states
   uint8_t grabState = 0;
 
   //variables for stable control of rotation
   bool ab[2];
+  uint8_t rotShift = 0;         //0..7
   uint8_t targetRotation = 0;   //0..7
   uint8_t currentRotation = 0;  //0..7
 
@@ -42,8 +56,8 @@ class ClawUnit : IUpdatable {  //class for claw module control
   Lerp2 degreeInertia;    // j=kg*m*degree   Relative  // but values can be picked relatively to make good predictions
                           // Lerp2 is used to predict these parameters vs degree of grabing
   float cubeInertia;      // j               Relative  // each modules parametres are measured relative
-  
-  float motorForce;       // j*d/s^2         base}     // to their motor torque
+
+  float motorForce;  // j*d/s^2         base}     // to their motor torque
 
 public:
   // void setBA(uint8_t _ba){};
@@ -61,6 +75,32 @@ public:
 
     rampUpLerp = Lerp(chaseMinPower, chaseBasePower);
   }
+  // set(uint8_t pin, uint8_t value) {
+  //   switch (pin) {
+  //     case 0:
+  //       mP = value;
+  //       break;
+  //     case 1:
+  //       cS = value;
+  //       break;
+  //     case 2:
+  //       eA = value + 18;
+  //       break;
+  //     case 3:
+  //       eB = value + 18;
+  //       break;
+  //     case 4:
+  //       mD = value;
+  //       break;
+  //     default:
+  //   }
+  // A
+  // 18
+  // 19
+  // 20
+  // 21
+  // 22
+  // 23
   void SetAngles(uint8_t releas, uint8_t hold, uint8_t grab) {  //set angles in degrees for states of grabbing
     grabPositions[0] = releas;
     grabPositions[1] = hold;
@@ -68,7 +108,7 @@ public:
   }
   void runRotationMotor(bool clockwise, uint8_t force) {
     analogWrite(mP, force);
-    digitalWrite(mD, !clockwise);
+    digitalWrite(mD, !clockwise != reverseDirection);
     motorForce = BSign(clockwise, force);
   }
   void setServo(uint8_t angle) {
@@ -90,12 +130,12 @@ public:
     bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values
     uint8_t difference = (_ab[0] != ab[0]) + (_ab[1] != ab[1]);  //count differenses
     if (difference) {
-      Serial.print(_ab[0]);  //log AB channels
-      Serial.print(_ab[1]);
-      Serial.print(" ");
+      // Serial.print(_ab[0]);  //log AB channels
+      // Serial.print(_ab[1]);
+      // Serial.print(" ");
       for (uint8_t i = 0; i < 2; i++) {                                      //step length
         uint8_t potential = Mod(8, currentRotation + BSign(i, difference));  //potential rotation index
-        uint8_t searchIndex = Mod(4, potential);                             //potential index on disc map
+        uint8_t searchIndex = Mod(4, potential + rotShift);                  //potential index on disc map
         if (_ab[0] == discMap[0][searchIndex])
           if (_ab[1] == discMap[1][searchIndex])  //if potential channels = current
           {
@@ -105,8 +145,8 @@ public:
       }
       ab[0] = _ab[0];
       ab[1] = _ab[1];  //new channel values assigning to static
-      Serial.print(currentRotation);
-      Serial.println(targetRotation);
+      // Serial.print(currentRotation);
+      // Serial.println(targetRotation);
       shouldCheckIfActionIsNeeded = true;
     }
   }
@@ -185,13 +225,18 @@ public:
         default:;
       }
   }
-  void allignRotation() {
-    runRotationMotor(true, chaseBasePower);
-    do {
-      orientationUpdate();
-    } while (ab[0] != ab[1]);
-    currentRotation = ab[0] * 2;
-    runRotationMotor(0, 0);
+  void assumeRotation() {
+    bool _ab[2] = { digitalRead(eA), digitalRead(eB) };
+    for (currentRotation = 0; currentRotation < 3; currentRotation++) {
+      if ((discMap[0][currentRotation] == _ab[0]) && (discMap[1][currentRotation] == _ab[1]))
+        break;
+    }
+    currentRotation = Mod(4, currentRotation + rotShift);
+  }
+  void changeRotshift(bool positive) {
+    int8_t delta = BSign(!positive, 1);
+    rotShift = Mod(4, int8_t(rotShift) + delta);
+    currentRotation = Mod(4, currentRotation + delta);
   }
   void logEncoder() {
     Serial.print(digitalRead(eA));
@@ -209,4 +254,5 @@ public:
   void changeLimit(int8_t i, int8_t d) {
     grabPositions[i] += d;
   }
+  friend class StandBy;
 };

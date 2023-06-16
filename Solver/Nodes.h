@@ -4,7 +4,9 @@
 #include <stdint.h>
 
 template<class StepType>
-struct ISearchNode {                            //Search node interface
+struct ISearchNode {  //Search node interface
+  // virtual ~ISearchNode();
+  virtual kill();
   virtual StepType stepValue();                 //get Value of step
   virtual void print();                         //print for debug
   virtual ISearchNode<StepType>* unexplored();  //create new next unexplored node
@@ -13,28 +15,32 @@ struct ISearchNode {                            //Search node interface
 
 template<class NodeType>
 struct PathStack : public StackHandler<NodeType*> {  //Stack of node Pointers
-  void print() {                             //call print() for each NodeType* in element value
-  if(this->length>0){
-    this->temp = this->last;
-    while (this->temp != NULL) {  //while temp exist
-      this->temp->value->print();
-      this->temp = this->temp->previous;
+  void print() {                                     //call print() for each NodeType* in element value
+    if (this->length > 0) {
+      this->temp = this->last;
+      while (this->temp != NULL) {  //while temp exist
+        this->temp->value->print();
+        this->temp = this->temp->previous;
+      }
+    } else {
+      Serial.print("[empty]");
     }
-  }else{
-    Serial.print("[empty]");
-  }
   }
   NodeType* nodeFromLast(uint8_t i = 0) {
     return (*(StackHandler<NodeType*>::valueFromLast(i)));  //evaluate pointer to node pointer
   }
   void removeNode() {
-    delete this->last->value;
+    this->last->value->kill();
+    // Serial.print(":/");//
     StackHandler<NodeType*>::remove();
   }
-  ~PathStack() {
+  clearNodes() {
     while ((this->length) > 0) {
       removeNode();
     }
+  }
+  ~PathStack() {
+    clearNodes();
   }
 };
 
@@ -63,6 +69,9 @@ struct IOperationNode : public ISearchNode<Operation> {  //Search Node for opera
 
 struct OperationNode : public IOperationNode {  //Any operation Node
   OperationNode() {}
+  OperationNode::~OperationNode() {
+    // Serial.print("Bye!");
+  }
   OperationNode::OperationNode(uint8_t ind) {
     scindex = ind;
   }
@@ -70,8 +79,13 @@ struct OperationNode : public IOperationNode {  //Any operation Node
     counter = code;
     scindex = ind;
   }
+  virtual kill() {
+    // Serial.print("killing");
+    OperationNode* a = this;
+    delete a;
+  }
   bool nextIfPossible() override {
-    Serial.print("NO THAT'S WRONG!");  //
+    // Serial.print("NO THAT'S WRONG!"); //
     if (counter < 8) {
       counter++;
       return true;
@@ -89,6 +103,9 @@ struct OperationNode : public IOperationNode {  //Any operation Node
 
 struct EdgeOperationNode : public IOperationNode {  //SearchNode for edge operations//counter is 0..5 axis(0..2 -1)*angle(1..3)->0..1*0..2
   EdgeOperationNode::EdgeOperationNode() {}
+  EdgeOperationNode::~EdgeOperationNode() {
+    // Serial.print("ByeBye!!");
+  }
   EdgeOperationNode::EdgeOperationNode(uint8_t ind) {
     scindex = ind;
   }
@@ -98,6 +115,12 @@ struct EdgeOperationNode : public IOperationNode {  //SearchNode for edge operat
     // sPnl();  //
     scindex = ind;
     // Serial.println(scindex);//
+  }
+    virtual kill() {
+
+    // Serial.print("killing");
+    EdgeOperationNode* a = this;
+    delete a;
   }
   Operation stepValue() override {                           //get current step(operation)
     uint8_t ov = counter / 3;                                //get unedited axis undex
@@ -137,4 +160,4 @@ struct OperationPathStack : public PathStack<IOperationNode> {
 };
 
 
-OperationPathStack getShortestPathEdge(uint8_t beginningScindex);
+

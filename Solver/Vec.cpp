@@ -47,7 +47,10 @@ void Vec::Transform(Cs *cs) {  //rebuild in cs
   for (i = 0; i < 3; i++) {  //Save cords
     temp[i] = c[i];
   }
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 3; i++) {  //cs and vector component (ort and c value)
+  //x->i
+  //y->j
+  //z->k
     uint8_t ov = cs->getComponent(i);
     if (ov < 3) {           //if direction is positive
       c[ov % 3] = temp[i];  //write positive
@@ -61,7 +64,7 @@ void Vec::Untransform(Cs *cs) {  //Rebuild from cs
   for (int8_t i = 0; i < 3; i++) {  //Save cords
     temp[i] = c[i];
   }
-  for (int8_t i = 0; i < 3; i++) {
+  for (int8_t i = 0; i < 3; i++) {//cs component (and new vector)
     int8_t ov = cs->getComponent(i);
     if (ov < 3) {           //if direction is positive
       c[i] = temp[ov % 3];  //write positive

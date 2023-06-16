@@ -8,6 +8,7 @@ struct StackElement {  //simple stack element
   T value;
   StackElement<T>* previous;
   StackElement(T val, StackElement<T>* prev);
+  void kill();
 };
 
 template<class T>
@@ -15,10 +16,13 @@ struct StackHandler {
 protected:
   StackElement<T>* temp = NULL;
 public:
-  StackElement<T>* first = NULL;
-  StackElement<T>* last = NULL;
+  StackElement<T>* first;
+  StackElement<T>* last;
   uint8_t length = 0;
-  StackHandler() {}
+  StackHandler() {
+    first = NULL;
+    last = NULL;
+  }
   ~StackHandler();
   void add(T value);
   void remove();
@@ -32,6 +36,13 @@ StackElement<T>::StackElement(T val, StackElement<T>* prev) {
   value = val;
   previous = prev;
 }
+
+template<class T>
+void StackElement<T>::kill() {
+  delete value;
+  value = NULL;
+}
+
 
 template<class T>
 StackHandler<T>::~StackHandler() {
@@ -61,7 +72,7 @@ void StackHandler<T>::remove() {
     delete last;
     first = NULL;
   }
-    length--;
+  length--;
 }
 template<class T>
 void StackHandler<T>::clear() {

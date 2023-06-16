@@ -1,11 +1,17 @@
 // #include "ClawUnit.h"
 // #include "TimeManager.h"
 // #include "CsT.h"
-#include "Awareness.h"
+#include "States.h"
 
+
+PostMan router;
 void setup() {
   Serial.begin(9600);
-  // Serial1.begin(9600);
+  Serial1.begin(115200);
+  while (!Serial1)
+    ;
+  while (!Serial)
+    ;
   // n1 = ClawUnit(4, 5, 10, A0, A1);
   // n2 = ClawUnit(7, 6, 11, A2, A3);
   // n1.SetAngles(5, 128, 145);
@@ -21,23 +27,25 @@ void setup() {
   // n1.allignRotation();
   // delay(1000);
   // n2.allignRotation();
-  while (!Serial)
-    ;
+  robotState = new NoState;
 
-  Serial.println("begin");
-  for (uint8_t i = 0; i < 24; i++) {
-    OperationPathStack solution = getShortestPathEdge(i);
-    Serial.print(i);
-    SCS::getCsT(i).print();
-    solution.print();
-    sPnl();
-    // Serial.println("Printed");
-    // Serial.println("Deleted");
-  }
-  Serial.println("the end.");
+  // for (uint8_t i = 0; i < 24; i++) {
+  //   Serial.print(i);
+  //   OperationPathStack solution = getShortestPathEdge(i);
+  //   Serial.print("\t");
+  //   SCS::getCsT(i).printNumbers();
+  //   Serial.print("\t");
+  //   Serial.print(solution.length);
+  //   Serial.print("\t");
+  //   Serial.print(Cube::State::edgePenaltyByDefault(i));
+  //   solution.clear();
+  //   sPnl();
+  // }
 }
+
 void loop() {
   // // n1.logEncoder();
   // n2.update();
   // n1.update();
+  router.update();
 }

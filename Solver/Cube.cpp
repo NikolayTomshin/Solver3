@@ -1,7 +1,7 @@
 #include "Cube.h"
 
 namespace Cube {
-  
+
 uint8_t linearIndex(Vec v) {
   //это сложная часть. Представим куб как верхний и нижний слой. В обоих слоях есть по 4 места по прямой и диагонали.
   //Кроме слоёв есть 4 "колонны" их соединяющие по углам. Предлагаю удлинить колонны до слоёв сделав их высоту в 3 детали.
@@ -16,7 +16,6 @@ uint8_t linearIndex(Vec v) {
     return ((v.c[2] + 1) * 2 + (x + 1) + y * (y + 1));
   }
 }
-
 Vec unfoldLinIndex(uint8_t linindex) {
   Vec temp;
   int8_t c;
@@ -177,5 +176,110 @@ void State::printSliced(bool piOrSc, CsT cubeCs) {  //show scs kinda in 3d
     Serial.println("-----------------------");
   }
 }
+static uint8_t State::edgePenaltyByDefault(uint8_t i) {
+  if (i == 0) return 0;
+  if (i < 10) {
+    return (1 + 2 * (i % 3 == 2));
+  }
+  if (i > 16) {
+    switch (i) {
+      default: return (3);
+      case 17:
+      case 23: return (2);
+    }
+  }
+  switch (i) {
+    case 10:
+    case 17: return (2);
+    default:
+      switch (i) {
+        case 12:
+        case 13: return (3);
+        default: return (1);
+      }
+  }
+}
+uint8_t State::statePenalty() {
+  uint8_t penalty = 0;
+  for (int8_t lin = 0; lin < 12; lin++) {
+    uint8_t edgePenalty = 1;
+    uint8_t lindex = edgeLindex[lin];
+    uint8_t pieceIndex = getCAI(lindex);
+    uint8_t scs = getscs(pieceIndex);  //scs of piece
+    Vec tempVec = unfoldLinIndex(lindex);
+    // Serial.print(lindex);
+    // Serial.print("\t");
+    uint8_t edgeOrt;
+    for (edgeOrt = 0; edgeOrt < 3; edgeOrt++) {  //finding edge axis
+      if (tempVec.c[edgeOrt] == 0) {             //component=0 is along edge
+        break;
+      }
+    }
+    CsT edgeCst = CsT(edgeOrt, 1);  //CsT( i,  j,  k, uint8_t missingComponent)
+    switch (Vec::Scal(edgeCst.getOrt(0), &tempVec)) {
+      case -1: edgeCst.rotate(edgeOrt, 2);  //180
+      case 1:                               //match
+        break;
+      default:
+        edgeCst.rotate(edgeOrt, -Vec::Scal(edgeCst.getOrt(2), &tempVec));
+    }  //get edgeCst
+    Vec edgeVec = Ovecs[edgeCst.getComponent(1)];
 
-}//ns Cube
+    // Serial.print("E");       //
+    // edgeCst.printNumbers();  //
+
+    CsT pseudoOrigin = edgeCst;                   //copy ECst
+    pseudoOrigin.untransform(&SCS::getCsT(scs));  //reorient back to origin
+    // Serial.print(";\t O");                        //
+    // pseudoOrigin.printNumbers();              //
+
+    edgeCst.untransform(&pseudoOrigin);  //how it looks
+
+    // Serial.print(";\t U");  //
+    // edgeCst.printNumbers();  //
+
+    edgePenalty += edgePenaltyByDefault(SCS::getSCindex(edgeCst));  //orientation penalty
+    // Serial.println(edgePenalty);
+
+    uint8_t lengthPenalty = 1;
+    for (int8_t y1 = -1; y1 < 2; y1 += 2) {
+      Vec temp2Vec = tempVec;
+      temp2Vec.Add(&edgeVec, y1);
+      if (getscsByVec(temp2Vec) != scs) lengthPenalty++;
+    }
+    edgePenalty *= lengthPenalty;  //multiply
+    // Serial.print("\t");
+    // Serial.println(edgePenalty);
+    if (edgePenalty > 1) { penalty += edgePenalty; }
+  }
+  return penalty;
+}
+
+uint8_t* indexedTiles;
+Color* colorTiles;     //colors for all tiles
+Color colorPallet[6];  //6 x color
+
+uint8_t colorLindex(Vec vector) {  //vector around 3x3 (normak=1) cube
+  uint8_t oa;
+  for (oa = 0; oa < 3; oa++) {
+    int8_t val = vector.c[oa];
+    if (abs(val) == 2) {
+      break;
+    }
+  }
+  return (9 * oa + 3 * (vector.c[(oa + 1) % 3] + 1) + vector.c[(oa + 2) % 3] + 1);
+}
+Vec numberOfSimilar(uint8_t palletIndex, Color* delta) {
+  Vec n(0, 0, 0);
+  for (uint8_t i = 0; i < 54; i++) {
+    Color* colorP = &colorTiles[i];
+    for (uint8_t c = 0; c < 3; c++) {
+      if (abs(colorP->component[c] - colorPallet[palletIndex].component[c]) <= delta->component[c]) {
+        n.c[c]++;
+      }
+    }
+  }
+  return n;
+}
+
+}  //ns Cube
