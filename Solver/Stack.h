@@ -43,7 +43,6 @@ void StackElement<T>::kill() {
   value = NULL;
 }
 
-
 template<class T>
 StackHandler<T>::~StackHandler() {
   clear();

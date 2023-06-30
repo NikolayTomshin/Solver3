@@ -2,25 +2,37 @@
 #include "Cube.h"
 #include <Servo.h>
 #include "Animation.h"
-
 const bool discMap[2][4] = { { 0, 1, 1, 0 },
                              { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
+class ClawUnit;
 
-struct ClawSetting {              //copy buffer
-  uint8_t mD, mP, eA, eB;         //Pins
+struct ClawSetting {  //copy buffer
+  bool copiedAngles = false, copiedDynamics = false, copiedPins = false;
+  uint8_t mD, mP, eA, eB, sC;     //Pins
   bool reverseDirection = false;  //reverse direction
+  uint8_t rotShift = 0;
 
   uint8_t grabPositions[3];
 
-  uint8_t decrement;
+  float decrement;
   uint8_t sustainable;
   uint8_t min;
+  void pastAngles(ClawUnit* target);
+  void pastDynamics(ClawUnit* target);
+  void pastPins(ClawUnit* target);
+  void pastAll(ClawUnit* target);
+  void copyAngles(ClawUnit* target);
+  void copyDynamics(ClawUnit* target);
+  void copyPins(ClawUnit* target);
+  void copyAll(ClawUnit* target);
+  void readEP(bool right);
+  void writeEP(bool right);
 };
 
-class ClawUnit : IUpdatable {     //class for claw module control
-  uint8_t mD, mP, eA, eB;         //Pins
-  bool reverseDirection = false;  //reverse direction
-  Servo servoGrab;                //Servo object
+class ClawUnit : public IUpdatable {  //class for claw module control
+  uint8_t mD, mP, eA, eB, sC;         //Pins
+  bool reverseDirection = false;      //reverse direction
+  Servo servoGrab;                    //Servo object
 
   uint8_t grabPositions[3];  //Positions for claw states
   uint8_t grabState = 0;
@@ -63,17 +75,21 @@ public:
   // void setBA(uint8_t _ba){};
   ClawUnit() {}
   ClawUnit(uint8_t md, uint8_t mp, uint8_t sc, uint8_t a, uint8_t b) {
-    mD = md;               //Rotary DC motor direction control pin;
-    mP = mp;               //Rotary DC motor power control pin;
-    eA = a;                //Pin for encoder A channel (lower track);
-    eB = b;                //Pin for encoder B channel (upper track);
-    servoGrab.attach(sc);  //Attach servo to sc pin, it grabs cube;
+    mD = md;  //Rotary DC motor direction control pin;
+    mP = mp;  //Rotary DC motor power control pin;
+    eA = a;   //Pin for encoder A channel (lower track);
+    eB = b;   //Pin for encoder B channel (upper track);
+    reattach(sc);
     pinMode(a, INPUT);
     pinMode(b, INPUT);
     pinMode(mD, OUTPUT);  //Set dc control
     pinMode(mP, OUTPUT);  //pins to output;
-
     rampUpLerp = Lerp(chaseMinPower, chaseBasePower);
+  }
+  void reattach(uint8_t sc) {
+    servoGrab.detach();
+    sC = sc;
+    servoGrab.attach(sc);  //Attach servo to sc pin, it grabs cube;
   }
   // set(uint8_t pin, uint8_t value) {
   //   switch (pin) {
@@ -236,7 +252,8 @@ public:
   void changeRotshift(bool positive) {
     int8_t delta = BSign(!positive, 1);
     rotShift = Mod(4, int8_t(rotShift) + delta);
-    currentRotation = Mod(4, currentRotation + delta);
+    currentRotation = Mod(4, currentRotation - delta);
+    shouldCheckIfActionIsNeeded = true;
   }
   void logEncoder() {
     Serial.print(digitalRead(eA));
@@ -255,4 +272,54 @@ public:
     grabPositions[i] += d;
   }
   friend class StandBy;
+  friend struct ClawSetting;
 };
+
+//settings copypast
+void ClawSetting::pastAngles(ClawUnit* target) {
+  for (uint8_t i = 0; i < 3; i++)
+    target->grabPositions[i] = grabPositions[i];
+}
+void ClawSetting::pastDynamics(ClawUnit* target) {
+  target->chaseDecrement = decrement;
+  target->chaseMinPower = min;
+}
+void ClawSetting::pastPins(ClawUnit* target) {
+  target->mD = mD;
+  target->mP = mP;
+  target->reattach(sC);
+  target->eA = eA;
+  target->eB = eB;
+  target->reverseDirection = reverseDirection;
+}
+void ClawSetting::pastAll(ClawUnit* target) {
+  target->rotShift = rotShift;
+  pastAngles(target);
+  pastDynamics(target);
+  pastPins(target);
+}
+void ClawSetting::copyAngles(ClawUnit* target) {
+  copiedAngles = true;
+  for (uint8_t i = 0; i < 3; i++)
+    grabPositions[i] = target->grabPositions[i];
+}
+void ClawSetting::copyDynamics(ClawUnit* target) {
+  copiedDynamics = true;
+  decrement = target->chaseDecrement;
+  min = target->chaseMinPower;
+}
+void ClawSetting::copyPins(ClawUnit* target) {
+  copiedPins = true;
+  mD = target->mD;
+  mP = target->mP;
+  sC = target->sC;
+  eA = target->eA;
+  eB = target->eB;
+  reverseDirection = target->reverseDirection;
+}
+void ClawSetting::copyAll(ClawUnit* target) {
+  rotShift = target->rotShift;
+  copyAngles(target);
+  copyDynamics(target);
+  copyPins(target);
+}

@@ -3,32 +3,29 @@
 // #include "CsT.h"
 #include "States.h"
 
+void testThing() {  //do in beginning
+}
 
-PostMan router;
 void setup() {
-  Serial.begin(9600);
+  n1 = ClawUnit(4, 5, 11, A3, A2);
+  n2 = ClawUnit(7, 6, 10, A1, A0);
+  n1.SetAngles(90, 100, 110);
+  n2.SetAngles(90, 100, 110);
+  n1.assumeRotation();
+  n2.assumeRotation();
+  n1.setGrab(2);
+  n2.setGrab(2);
+  scanner = Scanner(9);
+  scanner.goPosition(0);
   Serial1.begin(115200);
+  Serial.begin(9600);
   while (!Serial1)
     ;
   while (!Serial)
     ;
-  // n1 = ClawUnit(4, 5, 10, A0, A1);
-  // n2 = ClawUnit(7, 6, 11, A2, A3);
-  // n1.SetAngles(5, 128, 145);
-  // n2.SetAngles(11, 140, 152);  //!!
-  // delay(500);
-  // n1.setGrab(0);
-  // delay(100);
-  // n2.setGrab(2);
-  // n1.setChase(true);  //enable chase
-  // n2.setChase(true);
-  // n1.setChasePower(255, 160, 0.95);
-  // n2.setChasePower(255, 100, 0.84);
-  // n1.allignRotation();
-  // delay(1000);
-  // n2.allignRotation();
-  robotState = new NoState;
-
+  StandBy defaultState(true);
+  stateStack.addState(&defaultState);
+  testThing();
   // for (uint8_t i = 0; i < 24; i++) {
   //   Serial.print(i);
   //   OperationPathStack solution = getShortestPathEdge(i);
@@ -42,10 +39,9 @@ void setup() {
   //   sPnl();
   // }
 }
-
 void loop() {
-  // // n1.logEncoder();
-  // n2.update();
-  // n1.update();
-  router.update();
+  n2.update();
+  n1.update();
+  if (nextionTimer.isLoop()) router.update();
+  robotState->update();
 }

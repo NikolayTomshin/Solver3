@@ -56,21 +56,28 @@ struct CsT : public Cs {
     return (true);
   }
   void transform(Cs* cs) {
-    for (uint8_t i=0; i < 3; i++) {            //orts
-      Vec component = *getOrt(i);       //get Vec ortovector
+    for (uint8_t i = 0; i < 3; i++) {        //orts
+      Vec component = *getOrt(i);            //get Vec ortovector
       component.Transform(cs);               //transform vector
       setComponent(i, V::GetON(component));  //set new Ov index
     }
   }
   void untransform(Cs* cs) {
     // CsT temp = *this;
-    for (uint8_t i=0; i < 3; i++) {            //orts
-      Vec component = *getOrt(i);       //get Vec ortovector
+    for (uint8_t i = 0; i < 3; i++) {        //orts
+      Vec component = *getOrt(i);            //get Vec ortovector
       component.Untransform(cs);             //untransform vector
       setComponent(i, V::GetON(component));  //set new Ov index
     }
   }
   Vec* getOrt(uint8_t component) {
     return (&Ovecs[getComponent(component)]);
+  }
+  void mirror(uint8_t normal) {
+    for (uint8_t i = 0; i < 3; i++) {
+      uint8_t component = (getComponent(i));
+      if ((component % 3) == (normal % 3))
+        setComponent(i, Mod3(component + 3));
+    }
   }
 };

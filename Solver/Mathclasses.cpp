@@ -26,3 +26,9 @@ int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength) 
   if (abs(target) > (cycleLength / 2)) target -= BSign(target > 0, cycleLength);
   return (target);
 }
+template<class T>
+T floor0(T a, T b) {
+  if (a < b)
+    return (0);
+  else return (a - b);
+}
