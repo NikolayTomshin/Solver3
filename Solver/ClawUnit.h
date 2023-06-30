@@ -4,31 +4,6 @@
 #include "Animation.h"
 const bool discMap[2][4] = { { 0, 1, 1, 0 },
                              { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
-class ClawUnit;
-
-struct ClawSetting {  //copy buffer
-  bool copiedAngles = false, copiedDynamics = false, copiedPins = false;
-  uint8_t mD, mP, eA, eB, sC;     //Pins
-  bool reverseDirection = false;  //reverse direction
-  uint8_t rotShift = 0;
-
-  uint8_t grabPositions[3];
-
-  float decrement;
-  uint8_t sustainable;
-  uint8_t min;
-  void pastAngles(ClawUnit* target);
-  void pastDynamics(ClawUnit* target);
-  void pastPins(ClawUnit* target);
-  void pastAll(ClawUnit* target);
-  void copyAngles(ClawUnit* target);
-  void copyDynamics(ClawUnit* target);
-  void copyPins(ClawUnit* target);
-  void copyAll(ClawUnit* target);
-  void readEP(bool right);
-  void writeEP(bool right);
-};
-
 class ClawUnit : public IUpdatable {  //class for claw module control
   uint8_t mD, mP, eA, eB, sC;         //Pins
   bool reverseDirection = false;      //reverse direction
@@ -58,16 +33,14 @@ class ClawUnit : public IUpdatable {  //class for claw module control
   float chaseDecrement;
   bool chaseDirection;
 
-
-
-  //variables for predicting claw rotation between ortogonal orientations | unused currently
-  float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
-  float degreesVelocity;  // degrees/second  RealWorld
-  Lerp2 dynamicDrag;      // d/s^2          {Relative  // currently can't be measured with robot hardware
-  Lerp2 staticDrag;       // d/s^2           Relative  // system has 1 degree of freedom
-  Lerp2 degreeInertia;    // j=kg*m*degree   Relative  // but values can be picked relatively to make good predictions
-                          // Lerp2 is used to predict these parameters vs degree of grabing
-  float cubeInertia;      // j               Relative  // each modules parametres are measured relative
+  // //variables for predicting claw rotation between ortogonal orientations | unused currently
+  // float degreesPosition;  // degrees         RealWorld //can be measured with robot hardware  +-360 from 0
+  // float degreesVelocity;  // degrees/second  RealWorld
+  // Lerp2 dynamicDrag;      // d/s^2          {Relative  // currently can't be measured with robot hardware
+  // Lerp2 staticDrag;       // d/s^2           Relative  // system has 1 degree of freedom
+  // Lerp2 degreeInertia;    // j=kg*m*degree   Relative  // but values can be picked relatively to make good predictions
+  //                         // Lerp2 is used to predict these parameters vs degree of grabing
+  // float cubeInertia;      // j               Relative  // each modules parametres are measured relative
 
   float motorForce;  // j*d/s^2         base}     // to their motor torque
 
@@ -274,52 +247,3 @@ public:
   friend class StandBy;
   friend struct ClawSetting;
 };
-
-//settings copypast
-void ClawSetting::pastAngles(ClawUnit* target) {
-  for (uint8_t i = 0; i < 3; i++)
-    target->grabPositions[i] = grabPositions[i];
-}
-void ClawSetting::pastDynamics(ClawUnit* target) {
-  target->chaseDecrement = decrement;
-  target->chaseMinPower = min;
-}
-void ClawSetting::pastPins(ClawUnit* target) {
-  target->mD = mD;
-  target->mP = mP;
-  target->reattach(sC);
-  target->eA = eA;
-  target->eB = eB;
-  target->reverseDirection = reverseDirection;
-}
-void ClawSetting::pastAll(ClawUnit* target) {
-  target->rotShift = rotShift;
-  pastAngles(target);
-  pastDynamics(target);
-  pastPins(target);
-}
-void ClawSetting::copyAngles(ClawUnit* target) {
-  copiedAngles = true;
-  for (uint8_t i = 0; i < 3; i++)
-    grabPositions[i] = target->grabPositions[i];
-}
-void ClawSetting::copyDynamics(ClawUnit* target) {
-  copiedDynamics = true;
-  decrement = target->chaseDecrement;
-  min = target->chaseMinPower;
-}
-void ClawSetting::copyPins(ClawUnit* target) {
-  copiedPins = true;
-  mD = target->mD;
-  mP = target->mP;
-  sC = target->sC;
-  eA = target->eA;
-  eB = target->eB;
-  reverseDirection = target->reverseDirection;
-}
-void ClawSetting::copyAll(ClawUnit* target) {
-  rotShift = target->rotShift;
-  copyAngles(target);
-  copyDynamics(target);
-  copyPins(target);
-}

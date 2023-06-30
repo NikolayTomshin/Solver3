@@ -4,11 +4,14 @@
 #include "States.h"
 
 void testThing() {  //do in beginning
+  Serial.print(sizeof(solveTree[20]));
 }
 
 void setup() {
   n1 = ClawUnit(4, 5, 11, A3, A2);
   n2 = ClawUnit(7, 6, 10, A1, A0);
+  n2.changeRotshift(true);
+  n2.changeRotshift(true);
   n1.SetAngles(90, 100, 110);
   n2.SetAngles(90, 100, 110);
   n1.assumeRotation();
@@ -23,8 +26,6 @@ void setup() {
     ;
   while (!Serial)
     ;
-  StandBy defaultState(true);
-  stateStack.addState(&defaultState);
   testThing();
   // for (uint8_t i = 0; i < 24; i++) {
   //   Serial.print(i);
@@ -42,6 +43,6 @@ void setup() {
 void loop() {
   n2.update();
   n1.update();
-  if (nextionTimer.isLoop()) router.update();
+  if (nextionTimer.isLoop()) serialUpd();
   robotState->update();
 }
