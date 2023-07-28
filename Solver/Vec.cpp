@@ -146,8 +146,8 @@ int8_t GetON(Vec v) {  //returns number of supposed ortovector. -1 if error
   }
   return (-1);
 }
-int8_t Cord(int8_t dimensionIndex, int8_t ortovectorIndex) {  //returns value of dIndexed coordinate  of indexed ortovactor
-  return (BMult(Mod3(ortovectorIndex) == dimensionIndex, Sign(ortovectorIndex > 2, 1)));
+int8_t Cord(int8_t dimensionIndex, int8_t ortovectorIndex) {  //returns value of dIndexed coordinate  of indexed ortovector
+  return (Mod3(ortovectorIndex) == dimensionIndex)*Sign(ortovectorIndex > 2, 1);
 }
 void OVSetup() {  //initialize ortovector prototypes again if you want
   for (int8_t i = 0; i < 6; i++)

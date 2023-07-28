@@ -3,30 +3,57 @@
 // #include "CsT.h"
 #include "States.h"
 
-void testThing() {  //do in beginning
-  Serial.print(sizeof(solveTree[20]));
+void ipause() {
+  waitAll();
+  setLed(1);
+  delay(500);
+  setLed(0);
 }
 
 void setup() {
-  n1 = ClawUnit(4, 5, 11, A3, A2);
-  n2 = ClawUnit(7, 6, 10, A1, A0);
+  n1 = ClawUnit(7, 6, 11, A2, A3);  //pins
+  n2 = ClawUnit(4, 5, 10, A0, A1);  //pins
   n2.changeRotshift(true);
-  n2.changeRotshift(true);
-  n1.SetAngles(90, 100, 110);
-  n2.SetAngles(90, 100, 110);
-  n1.assumeRotation();
-  n2.assumeRotation();
-  n1.setGrab(2);
-  n2.setGrab(2);
-  scanner = Scanner(9);
+  n2.changeRotshift(true);    //fix right rotation
+  n1.SetAngles(0, 138, 152);  //angles left
+  n2.SetAngles(4, 140, 154);  //angles right
+  n1.setServoSpeed(300, 80, 100);
+  n2.setServoSpeed(300, 80, 100);
+  n1.setChasePower(255, 130, 0.93);  //low
+  n2.setChasePower(2, 160, 0.95);
+  scanner = Scanner(9, 400.0);
   scanner.goPosition(0);
   Serial1.begin(115200);
   Serial.begin(9600);
-  while (!Serial1)
-    ;
+  robotState = new StandBy;
+  // while (!Serial1)
+  //   ;
   while (!Serial)
     ;
-  testThing();
+
+  
+  Serial.println("Together");
+  setLed(0);
+  n1.getTogether();
+  n2.getTogether();
+  waitAnything(2, 2);
+  syncGrab(1);
+  motorics.setState();  
+  while (true) {
+    motorics.go(SubOperation(0,0));
+    open();
+    waitIn();
+    syncGrab(1);
+    motorics.go(SubOperation(true, 4, 1));
+    motorics.go(SubOperation(true, 2, 1));
+    motorics.go(SubOperation(false, 2, 2));
+    motorics.go(SubOperation(false, 2, 2));
+  }
+  // motorics.go(SubOperation(1, 1));
+  // motorics.go(SubOperation(0, 1));
+  // Serial.print("reached -1,1");
+  // motorics.go(SubOperation(1,-1));
+
   // for (uint8_t i = 0; i < 24; i++) {
   //   Serial.print(i);
   //   OperationPathStack solution = getShortestPathEdge(i);
@@ -40,9 +67,12 @@ void setup() {
   //   sPnl();
   // }
 }
-void loop() {
+void systemUpdate() {
   n2.update();
   n1.update();
-  if (nextionTimer.isLoop()) serialUpd();
-  robotState->update();
+  scanner.update();
+  // serialUpd();
+}
+void loop() {
+  systemUpdate();
 }

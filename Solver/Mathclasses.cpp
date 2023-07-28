@@ -10,25 +10,22 @@ int8_t Mod3(int8_t argument) {
   return (Mod(3, argument));
 }
 int8_t Sign(int8_t i, int8_t argument) {  //even positive, odd negative
-  return (((i % 2) == 0) ? argument : -argument);
+  return ((i % 2) ? argument : -argument);
 }
-int8_t BSign(bool negative, int8_t a) {  //false positive, true negative
-  if (negative) return -a;
+int16_t BSign(bool flipSign, int16_t a) {  //false positive, true negative
+  if (flipSign) return -a;
   else return a;
 }
-int8_t BMult(bool b, int8_t a) {
-  return (b ? a : 0);
-}
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength) {  //polar vector from position on to target cycle in length of cycle
-  position = Mod(cycleLength, position);
-  target = Mod(cycleLength, target);
-  target = (target - position);
-  if (abs(target) > (cycleLength / 2)) target -= BSign(target > 0, cycleLength);
+  position = Mod(cycleLength, position);                                           //position on cycle
+  target = Mod(cycleLength, target);                                               //target on cycle
+  target = (target - position);                                                    //target is difference
+  if (abs(target) > (cycleLength / 2))                                             //if difference greater than half cycle
+    target += BSign(target > 0, cycleLength);
   return (target);
 }
-template<class T>
-T floor0(T a, T b) {
-  if (a < b)
-    return (0);
-  else return (a - b);
+float floatSigned(float value, bool positive) {
+  if (positive)
+    return value;
+  return -value;
 }
