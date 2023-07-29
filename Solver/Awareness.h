@@ -216,7 +216,6 @@ void opDemo() {
   }
 }
 
-CsT cubeCs;  //ориентация куба изначально не важна, закреплена за центральными клетками которые не считаются деталями
 
 uint8_t unsignedOAngle(int8_t angle) {  //to unsigned for storage
   return uint8_t(Mod(4, angle));
@@ -308,6 +307,9 @@ ClawUnit* getBlock(bool right) {
   if (right) return &n2;
   else return &n1;
 }
+uint8_t getClawAxis(bool right) {
+  return 2 << right;
+}
 void grabAction(bool right, uint8_t grabState, uint8_t minusDelta = 0) {
   getBlock(right)->setGrab(grabState, minusDelta);
   waitAnything(3, right);
@@ -352,13 +354,14 @@ class ClawMotorics {  //this is very complicated and requires documentation
   z - path without performing actions
   */
   int8_t x = 0, y = 0;  //current state
-  int8_t stabilityPoints = 5;
+  int8_t stabilityPoints = 20;
+  CsT cubeCs;  //ориентация куба изначально не важна, закреплена за центральными клетками которые не считаются деталями
   void checkStability() {
     if (stabilityPoints < 0)
       if (!x) {
         Serial.print("regrab");
         reGrab();
-        stabilityPoints = 6;
+        stabilityPoints = 20;
       }
   }
   void perfectGrab(bool rightMain, bool goingOutside) {
@@ -379,6 +382,8 @@ public:
   void go(SubOperation targetOperation) {  //go do operation
     int8_t tX = 0, tY = 0;                 //temp variables for target cords
     Serial.print("Starting pos");
+    waitAnything(3, 2);
+    waitAnything(1, 2);
     printCords();
     if (targetOperation.isOperation()) {  //do operation via shortest path
       int8_t angle = targetOperation.getAngle();
@@ -397,17 +402,21 @@ public:
       else  //same y if sign = claw, else 0
         tY = y * (rightClaw == (y > 0));
       zMove(tX, tY);  //go to cords for operation preparation
+
       checkStability();
       Serial.print("Doing op");
       getBlock(rightClaw)->increaseTarget(2 * angle);  //main movement, because it's ready
-      if (oddAngle) {
-        int8_t wholeShortY = BSign(rightClaw, -1);  //rightClaw=1, leftClaw=-1, opposit to far coordinate
-        if (wholeRotation && !(y + wholeShortY)) {
+      if (wholeRotation) {
+        cubeCs.rotate(getClawAxis(rightClaw), angle);
+        int8_t relativeY = BSign(rightClaw, y);  //rightClaw=1, leftClaw=-1, opposit to far coordinate
+        if (relativeY == 1) {
           getBlock(!rightClaw)->increaseTarget(-2);  //rotate opposite claw to stay in 3x3 state map, if not desirable exit pathfinding will correct this decision
-          y = wholeShortY;                           //assign new y
-        } else
-          y += BSign(rightClaw != y, -1) * oddAngle;
-      }
+          y = -y;                                    //assign new y
+          goto skipYIncrement;
+        }
+      } else waitAnything(2, rightClaw);
+      y += BSign(y == rightClaw, oddAngle);
+skipYIncrement:
       printCords();
     }
     if (targetOperation.exitRequired()) {

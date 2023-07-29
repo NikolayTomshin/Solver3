@@ -245,7 +245,7 @@ public:
           if (arrivalState == 2) {  //if moved from outside forces
             jamStatus = 0;
             chaseRoutine = 2;  //start rampUpRoutin
-            rampUpTime = Timer(150);
+            rampUpTime = Timer(300);
           } else {                                                //else if just arrived and oscilated before millis passed
             oscilationNumber++;                                   //count oscilation
             runRotationMotor(chaseDirection, oscilationPower());  //run motor with decreased power
@@ -262,7 +262,7 @@ public:
     if (chaseRoutine)  //chase routines
       switch (chaseRoutine) {
         case 1:                                 //Arrival
-          if (arrivalTime.isTimePassed(300)) {  //if 300 millis over target assume it's stopped and arrived
+          if (arrivalTime.isTimePassed(60)) {  //if 300 millis over target assume it's stopped and arrived
             chaseRoutine = 0;                   //stop routines
             arrivalState = 2;                   //affirm arrival
             oscilationNumber = 0;               //reset oscilations

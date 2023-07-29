@@ -17,10 +17,10 @@ void setup() {
   n2.changeRotshift(true);    //fix right rotation
   n1.SetAngles(0, 138, 152);  //angles left
   n2.SetAngles(4, 140, 154);  //angles right
-  n1.setServoSpeed(300, 80, 100);
-  n2.setServoSpeed(300, 80, 100);
-  n1.setChasePower(255, 130, 0.93);  //low
-  n2.setChasePower(2, 160, 0.95);
+  n1.setServoSpeed(300, 100, 100);
+  n2.setServoSpeed(300, 100, 100);
+  n1.setChasePower(255, 130, 0.92);  //low
+  n2.setChasePower(255, 160, 0.95);
   scanner = Scanner(9, 400.0);
   scanner.goPosition(0);
   Serial1.begin(115200);
@@ -31,23 +31,26 @@ void setup() {
   while (!Serial)
     ;
 
-  
+
   Serial.println("Together");
   setLed(0);
   n1.getTogether();
   n2.getTogether();
   waitAnything(2, 2);
   syncGrab(1);
-  motorics.setState();  
+  motorics.setState();
   while (true) {
-    motorics.go(SubOperation(0,0));
+    motorics.go(SubOperation(0, 0));
     open();
     waitIn();
-    syncGrab(1);
-    motorics.go(SubOperation(true, 4, 1));
-    motorics.go(SubOperation(true, 2, 1));
-    motorics.go(SubOperation(false, 2, 2));
-    motorics.go(SubOperation(false, 2, 2));
+    for (uint8_t i = 0; i < 4; i++) {
+      motorics.go(SubOperation(false, 2, 1));
+      motorics.go(SubOperation(true, 4, 1));
+    }
+    for (uint8_t i = 0; i < 4; i++) {
+      motorics.go(SubOperation(true, 4, -1));
+      motorics.go(SubOperation(false, 2, -1));
+    }
   }
   // motorics.go(SubOperation(1, 1));
   // motorics.go(SubOperation(0, 1));
