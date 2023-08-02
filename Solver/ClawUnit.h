@@ -18,7 +18,7 @@ struct DiscoData {
   float quarters[4] = { 0 };  //times of quartes 0-2, 2-4, 4-6, 6-8(0)
   bool enableLog = true;      //
   DiscoData() {
-    pid = PID(0.3, 0.000001, 0.2);
+    pid = PID(0.3, 0.000001, 1);
   }
   uint8_t getQIndex(int8_t delta = 0) {
     return (Mod(4, delta + quarterIndex));
@@ -202,7 +202,6 @@ public:
   }
   void setChase(bool _chase) {
     enableChase = _chase;
-
     if (_chase) {
       discoMode(false);
     }
@@ -261,11 +260,11 @@ public:
     }
     if (chaseRoutine)  //chase routines
       switch (chaseRoutine) {
-        case 1:                                 //Arrival
-          if (arrivalTime.isTimePassed(60)) {  //if 300 millis over target assume it's stopped and arrived
-            chaseRoutine = 0;                   //stop routines
-            arrivalState = 2;                   //affirm arrival
-            oscilationNumber = 0;               //reset oscilations
+        case 1:                                //Arrival
+          if (arrivalTime.isTimePassed(100)) {  //if 300 millis over target assume it's stopped and arrived
+            chaseRoutine = 0;                  //stop routines
+            arrivalState = 2;                  //affirm arrival
+            oscilationNumber = 0;              //reset oscilations
             // Serial.print("Arrived");
           }
           break;
@@ -414,21 +413,25 @@ public:
         break;
     }
   }
+  bool isDisco() {
+    return arrivalState == 3;
+  }
   void discoMode(bool ON) {
-    if (ON) {                   //turning ON
-      disco = new DiscoData();  //create DD
-      Serial.println("DISCO MODE");
-      enableChase = false;  //turn off chase
-      arrivalState = 3;     //mark DM
-      runRotationMotor(1, 200);
-    } else {                    //turniong OFF
-      delete disco;             //delete DD
-      if (arrivalState == 3) {  //if DM was present
-        arrivalState = 0;
-        runRotationMotor(0, 0);  //turn of rotation
-        waitTime(3000);          //wait for claw to stop
+    if (isDisco() != ON)
+      if (ON) {                               //turning ON
+        disco = new DiscoData();  //create DD
+        Serial.println("DISCO MODE");
+        enableChase = false;  //turn off chase
+        arrivalState = 3;     //mark DM
+        runRotationMotor(1, 200);
+      } else {                    //turniong OFF
+        delete disco;             //delete DD
+        if (arrivalState == 3) {  //if DM was present
+          arrivalState = 0;
+          runRotationMotor(0, 0);  //turn of rotation
+          waitTime(3000);          //wait for claw to stop
+        }
       }
-    }
   }
   friend class StandBy;
   friend struct ClawSetting;

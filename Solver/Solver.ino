@@ -17,8 +17,8 @@ void setup() {
   n2.changeRotshift(true);    //fix right rotation
   n1.SetAngles(0, 138, 152);  //angles left
   n2.SetAngles(4, 140, 154);  //angles right
-  n1.setServoSpeed(300, 100, 100);
-  n2.setServoSpeed(300, 100, 100);
+  n1.setServoSpeed(300, 97, 100);
+  n2.setServoSpeed(300, 97, 100);
   n1.setChasePower(255, 130, 0.92);  //low
   n2.setChasePower(255, 160, 0.95);
   scanner = Scanner(9, 400.0);
@@ -44,12 +44,12 @@ void setup() {
     open();
     waitIn();
     for (uint8_t i = 0; i < 4; i++) {
-      motorics.go(SubOperation(false, 2, 1));
       motorics.go(SubOperation(true, 4, 1));
+      motorics.go(SubOperation(false, 2, 1));
     }
     for (uint8_t i = 0; i < 4; i++) {
-      motorics.go(SubOperation(true, 4, -1));
       motorics.go(SubOperation(false, 2, -1));
+      motorics.go(SubOperation(true, 4, -1));
     }
   }
   // motorics.go(SubOperation(1, 1));
