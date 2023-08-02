@@ -13,13 +13,16 @@ template<class T> T limits(T value, T limit, bool upperLimit = true) {
   }
   return value;
 }
+template<class T> T doubleLimits(T value, T lLimit, T uLimit) {//double limit lower and upper
+  return limits<T>(limits<T>(value, lLimit, false), uLimit, true);
+}
 template<class T> T myAbs(T value) {
   if (value < 0) {
     return -value;
   }
   return value;
 }
-template<class T> T TBSign(T value, bool stayPositive, bool assignSignNOTflip = false) {//value, positive sign, sign assign mode
+template<class T> T TBSign(T value, bool stayPositive, bool assignSignNOTflip = false) {  //value, positive sign, sign assign mode
   if (assignSignNOTflip) value = myAbs<T>(value);
   if (stayPositive) {
     return value;

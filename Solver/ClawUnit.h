@@ -11,14 +11,24 @@ Timer grabDelay = Timer(60);
 
 struct DiscoData {
   PID pid;
+  //     <-cw    |      .
+  //    0 | 1    |      1
+  //   ---O---   |   -0-O-2-
+  //    3 | 2    |      3
+  // time frames |  assignment for cw counting
+  uint8_t startOA;
   uint8_t discoState = 0;  //0 wait for syncg; 1 setting up speed;
   uint8_t rotations = 0;
-  uint8_t quarterIndex = 0;
+  uint8_t quarterIndex = 0;  //index of current quarter(0..3)
   float average = 0;
   float quarters[4] = { 0 };  //times of quartes 0-2, 2-4, 4-6, 6-8(0)
   bool enableLog = true;      //
-  DiscoData() {
-    pid = PID(0.3, 0.000001, 1);
+  DiscoData(uint8_t _startOA) {
+    startOA = _startOA;
+    pid = PID(0.2, 0.00005, 35);
+  }
+  ~DiscoData() {
+    Serial.println("Disco deleted");
   }
   uint8_t getQIndex(int8_t delta = 0) {
     return (Mod(4, delta + quarterIndex));
@@ -182,15 +192,20 @@ public:
       // Serial.print(_ab[0]);  //log AB channels
       // Serial.print(_ab[1]);
       // Serial.print(" ");
-      for (uint8_t i = 0; i < 2; i++) {                                      //step length
-        uint8_t potential = Mod(8, currentRotation + BSign(i, difference));  //potential rotation index
-        uint8_t searchIndex = Mod(4, potential - rotShift);                  //potential index on disc map
-        if (_ab[0] == discMap[0][searchIndex])
-          if (_ab[1] == discMap[1][searchIndex])  //if potential channels = current
-          {
-            currentRotation = potential;  //potential is current
-            break;                        //stop search
+      switch (difference) {
+        case 1:
+          for (uint8_t i = 0; i < 2; i++) {                             //step length
+            uint8_t potential = Mod(8, currentRotation + BSign(i, 1));  //potential rotation index
+            uint8_t searchIndex = Mod(4, potential - rotShift);         //potential index on disc map
+            if (_ab[0] == discMap[0][searchIndex])
+              if (_ab[1] == discMap[1][searchIndex])  //if potential channels = current
+              {
+                currentRotation = potential;  //potential is current
+                break;                        //stop search
+              }
           }
+          break;
+        default /*2*/: currentRotation = Mod(8, currentRotation + BSign(motorForce < 0, 2));  //assume rotated with direction of motor power
       }
       ab[0] = _ab[0];
       ab[1] = _ab[1];  //new channel values assigning to static
@@ -260,11 +275,11 @@ public:
     }
     if (chaseRoutine)  //chase routines
       switch (chaseRoutine) {
-        case 1:                                //Arrival
+        case 1:                                 //Arrival
           if (arrivalTime.isTimePassed(100)) {  //if 300 millis over target assume it's stopped and arrived
-            chaseRoutine = 0;                  //stop routines
-            arrivalState = 2;                  //affirm arrival
-            oscilationNumber = 0;              //reset oscilations
+            chaseRoutine = 0;                   //stop routines
+            arrivalState = 2;                   //affirm arrival
+            oscilationNumber = 0;               //reset oscilations
             // Serial.print("Arrived");
           }
           break;
@@ -371,66 +386,57 @@ public:
     setGrab(1, 15);
   }
   bool nextQ() {
-    return (currentRotation == (2 * disco->getQIndex(1)));
+    return (Mod(4, (currentRotation / 2) - disco->startOA)) == disco->getQIndex(1);
   }
-  void discUpdate() {
-    switch (disco->discoState) {
-      case 0:
-        if (shouldCheckIfActionIsNeeded) {  //update
-          // Serial.println("Action N");
-          if (!(currentRotation % 2) && (currentRotation == 0)) {
-            arrivalTime.resetTime();
-            disco->discoState = 1;
-          }
+  void discUpdate() {  //read timings and control speed
+
+    if (shouldCheckIfActionIsNeeded) {  //after rotation update
+      if (nextQ()) {
+        // Serial.println("NextQ");
+        disco->setQTime(&arrivalTime);
+        arrivalTime.resetTime();      //enter time for past Q
+        disco->incQIndex();           //inc Q index
+        if (disco->getQIndex() == 0)  //if full circle inc rotations
+        {
+          disco->rotations++;
+          // Serial.println("Rotated!:D");
         }
-        break;
-      case 1:
-        if (shouldCheckIfActionIsNeeded)
-          if (nextQ()) {
-            disco->setQTime(&arrivalTime);
-            arrivalTime.resetTime();
-            disco->incQIndex();
-            if (disco->getQIndex() == 0) {
-              disco->rotations++;
-              // disco->printQ();
-              float sum = arSum<float>(disco->quarters, 4);
-              Serial.print(sum);
-              Serial.write('\n');
-
-              float delta = sum - 300.0;
-              float thisPower = limits<float>(limits<float>(motorForce + disco->pid.deltaSignal(delta), 255), chaseMinPower, false);
-              disco->pid.print();
-              Serial.println(thisPower);
-              runRotationMotor(1, thisPower);
-            }
-          }
-        break;
-      case 2:
-
-        break;
-      default:
-
-        break;
+        switch (disco->discoState) {
+          case 0:  //first round
+            if (disco->rotations > 0)
+              disco->discoState = 1;
+            break;
+          case 1:  //control speed
+            float sum = arSum<float>(disco->quarters, 4);
+            Serial.print(sum);
+            Serial.write('\t');
+            float delta = sum - 288.0;
+            float thisPower = doubleLimits<float>(motorForce + disco->pid.deltaSignal(delta), chaseMinPower + 30, 240.0);
+            // disco->pid.print();
+            Serial.println(thisPower);
+            runRotationMotor(1, thisPower);
+        }
+      }
     }
   }
+
   bool isDisco() {
     return arrivalState == 3;
   }
   void discoMode(bool ON) {
     if (isDisco() != ON)
-      if (ON) {                               //turning ON
-        disco = new DiscoData();  //create DD
+      if (ON) {                                      //turning ON must be arrived at even rotation
+        disco = new DiscoData(currentRotation / 2);  //create DD
         Serial.println("DISCO MODE");
         enableChase = false;  //turn off chase
         arrivalState = 3;     //mark DM
         runRotationMotor(1, 200);
-      } else {                    //turniong OFF
-        delete disco;             //delete DD
-        if (arrivalState == 3) {  //if DM was present
-          arrivalState = 0;
-          runRotationMotor(0, 0);  //turn of rotation
-          waitTime(3000);          //wait for claw to stop
-        }
+        arrivalTime.resetTime();
+      } else {         //turniong OFF
+        delete disco;  //delete DD
+        resetChase();
+        runRotationMotor(0, 0);  //turn of rotation
+        waitTime(500);           //wait for claw to stop
       }
   }
   friend class StandBy;

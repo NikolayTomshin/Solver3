@@ -16,7 +16,7 @@ void setup() {
   n2.changeRotshift(true);
   n2.changeRotshift(true);    //fix right rotation
   n1.SetAngles(0, 138, 152);  //angles left
-  n2.SetAngles(4, 140, 154);  //angles right
+  n2.SetAngles(4, 140, 155);  //angles right
   n1.setServoSpeed(300, 97, 100);
   n2.setServoSpeed(300, 97, 100);
   n1.setChasePower(255, 130, 0.92);  //low
@@ -40,17 +40,16 @@ void setup() {
   syncGrab(1);
   motorics.setState();
   while (true) {
-    motorics.go(SubOperation(0, 0));
-    open();
+    motorics.go(SubOperation(0, -1));
     waitIn();
-    for (uint8_t i = 0; i < 4; i++) {
-      motorics.go(SubOperation(true, 4, 1));
-      motorics.go(SubOperation(false, 2, 1));
-    }
-    for (uint8_t i = 0; i < 4; i++) {
-      motorics.go(SubOperation(false, 2, -1));
-      motorics.go(SubOperation(true, 4, -1));
-    }
+    motorics.goDisco(false);
+    waitIn();
+    scanner.goPosition(1);
+    waitIn();
+    scanner.goPosition(0);
+    waitIn();
+    Serial.print("Stopping disco");
+    motorics.stopDisco();
   }
   // motorics.go(SubOperation(1, 1));
   // motorics.go(SubOperation(0, 1));

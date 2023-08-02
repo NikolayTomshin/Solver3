@@ -229,17 +229,20 @@ public:
     float dTime = float(timer.timePassed());  //delta time
     if (dTime) {                              //if time passed
       integral += _error * dTime;
-      storedSignal = p * _error + i * integral - d * (_error - error) / dTime;  //calculate signal
+      storedSignal = p * _error + i * integral + d * (_error - error) / dTime;  //calculate signal
       error = _error;
       timer.resetTime();
     }  //else return old signal
     return (storedSignal);
   }
   void print() {
+    Serial.print("Er=");
     Serial.print(error);
     Serial.write('\t');
+    Serial.print("In=");
     Serial.print(integral);
     Serial.write('\t');
+    Serial.print("Sig=");
     Serial.print(storedSignal);
     Serial.write('\t');
   }

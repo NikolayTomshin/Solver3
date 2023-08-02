@@ -22,6 +22,10 @@ bool clawsReady(uint8_t targetArrival, uint8_t claws) {
   }
 }
 Timer nextionTimer(30);
+
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
 CsT scannerCs = CsT(5, 0, 1);  //x-смотрит на куб, y-в сторону откидывания
 class Scanner : public IReady, public IUpdatable {
 public:
@@ -355,6 +359,7 @@ class ClawMotorics {  //this is very complicated and requires documentation
   */
   int8_t x = 0, y = 0;  //current state
   int8_t stabilityPoints = 20;
+  int8_t discoStatus = -1;
   CsT cubeCs;  //ориентация куба изначально не важна, закреплена за центральными клетками которые не считаются деталями
   void checkStability() {
     if (stabilityPoints < 0)
@@ -375,6 +380,9 @@ class ClawMotorics {  //this is very complicated and requires documentation
   }
 public:
   ClawMotorics() {}
+  bool isDisco() {
+    return discoStatus >= 0;
+  }
   void setState(uint8_t _x = 0, uint8_t _y = 0) {
     x = _x;
     y = _y;
@@ -382,6 +390,7 @@ public:
   void go(SubOperation targetOperation) {  //go do operation
     int8_t tX = 0, tY = 0;                 //temp variables for target cords
     Serial.print("Starting pos");
+    stopDisco();
     waitAnything(3, 2);
     waitAnything(1, 2);
     printCords();
@@ -440,6 +449,25 @@ skipYIncrement:
     Serial.print(';');
     Serial.print(y);
     Serial.println(')');
+  }
+  void stopDisco() {
+    if (isDisco()) {
+      ClawUnit* subject = getBlock(discoStatus);
+      subject->discoMode(false);  //stop discoMode
+      subject->setChase(true);
+      waitAnything(2, discoStatus);
+      discoStatus = -1;
+    }
+  }
+  void goDisco(bool right) {
+    if (!isDisco()) {
+      int8_t tX = BSign(right, 1);
+      go(SubOperation(0, -tX));
+      reGrab();
+      go(SubOperation(tX, -tX));
+      discoStatus = right;
+      getBlock(right)->discoMode(true);
+    } else Serial.println("Can't start second disco!");
   }
 private:
   static uint8_t zIndex(int8_t x, int8_t y) {  //zIndex by coordinates
