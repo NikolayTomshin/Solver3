@@ -1,3 +1,4 @@
+#include <stdint.h>
 #pragma once
 #include "Arduino.h"
 
@@ -13,7 +14,7 @@ template<class T> T limits(T value, T limit, bool upperLimit = true) {
   }
   return value;
 }
-template<class T> T doubleLimits(T value, T lLimit, T uLimit) {//double limit lower and upper
+template<class T> T doubleLimits(T value, T lLimit, T uLimit) {  //double limit lower and upper
   return limits<T>(limits<T>(value, lLimit, false), uLimit, true);
 }
 template<class T> T myAbs(T value) {
@@ -39,13 +40,12 @@ template<class T> T absLimits(T value, T limit, bool upperLimit = true) {
 float floatSigned(float value, bool positive);
 
 template<class T> T arSum(T arr[], uint8_t size) {
-  T sum = arr[0];
-  for (uint8_t i = 1; i < size; i++) {
+  T sum = 0;
+  for (uint8_t i = 0; i < size; i++) {
     sum += arr[i];
   }
   return sum;
 }
-
 template<class T> bool inMargin(T value, T target, T epsilon) {
   T a = value - target;
   if (a > 0) {
@@ -53,3 +53,4 @@ template<class T> bool inMargin(T value, T target, T epsilon) {
   }
   return a > -epsilon;
 }
+uint8_t arcQuarter(int8_t x, int8_t y);

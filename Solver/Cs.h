@@ -20,25 +20,25 @@ struct Cs {  //actually 3 int8 vector base class for coordinate systems and valu
   void setComponent(uint8_t index, uint8_t value) {
     bitCoding::writeBased(6, value, index, ortoIndexes);
   }
-  void printNumbers(){
+  void printLetters() {
     Serial.print("(");
-    Serial.print(getComponent(0));
+    printLetter(getComponent(0));
     Serial.print(",");
-    Serial.print(getComponent(1));
+    printLetter(getComponent(1));
     Serial.print(",");
-    Serial.print(getComponent(2));
-    Serial.print(")");    
+    printLetter(getComponent(2));
+    Serial.print(")");
   }
   void print() {
     Serial.print("(");
-    GetLetter(getComponent(0));
+    printLetter(getComponent(0));
     Serial.print(",");
-    GetLetter(getComponent(1));
+    printLetter(getComponent(1));
     Serial.print(",");
-    GetLetter(getComponent(2));
+    printLetter(getComponent(2));
     Serial.print(")");
   }
-  void GetLetter(int8_t F) {  //function for getting string of ortovector by index
+  static void printLetter(int8_t F) {  //function for getting string of ortovector by index
     switch (F) {
       case 0:
         Serial.print("i");

@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include "ClawUnit.h"
 
-
 ClawUnit n1;  //left claw 1
 ClawUnit n2;  //right claw 2
 bool clawsReady(uint8_t targetArrival, uint8_t claws) {
@@ -26,12 +25,14 @@ Timer nextionTimer(30);
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
-CsT scannerCs = CsT(5, 0, 1);  //x-смотрит на куб, y-в сторону откидывания
+
+CsT scannerCs = CsT(0, 4, 2);  //z-смотрит от куба, y от клешни сканера, x совпадает с x
 class Scanner : public IReady, public IUpdatable {
 public:
   MyServo servo;
   bool invertAngles = false;
-  uint8_t servoAngles[4] = { 5, 143, 153, 167 };  //folded 0,1,2,3 centre
+  uint8_t position = 9;
+  uint8_t servoAngles[4] = { 5, 145, 152, 168 };  //folded 0,1,2,3 centre
   // uint8_t positionCode;//unused
   // void setPosition(uint8_t posCode){//unused
   // }
@@ -42,8 +43,8 @@ public:
     servo.setSpeed(degreesPerSec);
   }
   void goAngle(uint8_t degrees) {
-    Serial.print("A");
-    Serial.println(degrees);
+    // Serial.print("A");
+    // Serial.println(degrees);
     uint8_t angle;
     if (invertAngles) {
       angle = 180 - degrees;
@@ -52,16 +53,32 @@ public:
     }
     servo.write(angle);
   }
-  void goPosition(uint8_t position) {
-    Serial.print("SP");
-    Serial.println(position);
-    goAngle(servoAngles[position]);
+  void goPosition(uint8_t _position) {
+    // Serial.print("SP");
+    // Serial.println(position);
+    if (position != _position) {
+      goAngle(servoAngles[_position]);
+      position = _position;
+    }
   }
   bool ready() {
     return servo.ready();
   }
   void update() {
     servo.update();
+  }
+  void snap(Cube::Color* color) {
+    tcs.begin();
+    uint16_t r, g, b, trash;
+    setLed(true);
+    tcs.getRawData(&r, &g, &b, &trash);
+    delay(colorLag - 2);
+    tcs.getRawData(&r, &g, &b, &trash);
+    setLed(false);
+    color->component[0] = uint8_t(r);
+    color->component[1] = uint8_t(g);
+    color->component[2] = uint8_t(b);
+    // Serial.println("DONE");
   }
 };
 Scanner scanner;
@@ -318,6 +335,10 @@ void grabAction(bool right, uint8_t grabState, uint8_t minusDelta = 0) {
   getBlock(right)->setGrab(grabState, minusDelta);
   waitAnything(3, right);
 }
+void scannerAction(uint8_t position) {
+  scanner.goPosition(position);
+  waitScanner();
+}
 void reGrab() {
   open();
   waitAnything(3, 2);
@@ -330,6 +351,7 @@ void waitIn() {
     systemUpdate();
   Serial.read();
 }
+Cube::CubeArray* colorArray;
 class ClawMotorics {  //this is very complicated and requires documentation
   /*
   left servo
@@ -360,7 +382,7 @@ class ClawMotorics {  //this is very complicated and requires documentation
   int8_t x = 0, y = 0;  //current state
   int8_t stabilityPoints = 20;
   int8_t discoStatus = -1;
-  CsT cubeCs;  //ориентация куба изначально не важна, закреплена за центральными клетками которые не считаются деталями
+  CsT cubeCs = CsT(0, 1, 2);  //ориентация куба изначально не важна, закреплена за центральными клетками которые не считаются деталями
   void checkStability() {
     if (stabilityPoints < 0)
       if (!x) {
@@ -379,6 +401,9 @@ class ClawMotorics {  //this is very complicated and requires documentation
     }
   }
 public:
+  CsT* getCube() {
+    return &cubeCs;
+  }
   ClawMotorics() {}
   bool isDisco() {
     return discoStatus >= 0;
@@ -386,6 +411,21 @@ public:
   void setState(uint8_t _x = 0, uint8_t _y = 0) {
     x = _x;
     y = _y;
+  }
+  void snapColor(int8_t localX, int8_t localY, Cube::Color* targetColor) {
+    if (isDisco()) {
+      bool notCentre = localX || localY;
+      bool edge = bool(localX) != bool(localY);
+      scannerAction(3 - notCentre * (2 - edge));
+      if (notCentre) {
+        while (!getBlock(discoStatus)->isTimeToShoot(arcQuarter(localX, localY), edge ? -0.2 : 0.3, 0.03)) {
+          systemUpdate();
+        }
+      }
+      // Serial.println("Ready to snap");
+      scanner.snap(targetColor);
+      disco->lowError = false;
+    } else Serial.print("Can't snap without disco");
   }
   void go(SubOperation targetOperation) {  //go do operation
     int8_t tX = 0, tY = 0;                 //temp variables for target cords
@@ -416,12 +456,14 @@ public:
       Serial.print("Doing op");
       getBlock(rightClaw)->increaseTarget(2 * angle);  //main movement, because it's ready
       if (wholeRotation) {
-        cubeCs.rotate(getClawAxis(rightClaw), angle);
-        int8_t relativeY = BSign(rightClaw, y);  //rightClaw=1, leftClaw=-1, opposit to far coordinate
-        if (relativeY == 1) {
-          getBlock(!rightClaw)->increaseTarget(-2);  //rotate opposite claw to stay in 3x3 state map, if not desirable exit pathfinding will correct this decision
-          y = -y;                                    //assign new y
-          goto skipYIncrement;
+        cubeCs.rotate(getClawAxis(rightClaw), angle);  //rotate cube
+        if (oddAngle) {                                //might stumble into
+          int8_t relativeY = BSign(rightClaw, y);      //rightClaw far=-1, leftClaw far=1
+          if ((relativeY == 1)) {
+            getBlock(!rightClaw)->increaseTarget(-2);  //rotate opposite claw to stay in 3x3 state map, if not desirable exit pathfinding will correct this decision
+            y = -y;                                    //assign new y
+            goto skipYIncrement;
+          }
         }
       } else waitAnything(2, rightClaw);
       y += BSign(y == rightClaw, oddAngle);
@@ -452,22 +494,55 @@ skipYIncrement:
   }
   void stopDisco() {
     if (isDisco()) {
+      scannerAction(0);
       ClawUnit* subject = getBlock(discoStatus);
       subject->discoMode(false);  //stop discoMode
       subject->setChase(true);
+      subject->resetChase();
       waitAnything(2, discoStatus);
+      zMove(0, y);
       discoStatus = -1;
     }
   }
   void goDisco(bool right) {
     if (!isDisco()) {
       int8_t tX = BSign(right, 1);
-      go(SubOperation(0, -tX));
+      zMove(0, -tX);
       reGrab();
-      go(SubOperation(tX, -tX));
+      zMove(tX, -tX);
       discoStatus = right;
       getBlock(right)->discoMode(true);
     } else Serial.println("Can't start second disco!");
+  }
+  void scanCurrentSide() {  //scan current side into color array(MUST EXIST)
+    goDisco(false);
+    Serial.print("Starting scan. Cube:");
+    cubeCs.printLetters();
+    sPnl();
+    Vec cursor = Vec(0, 0, 2);  //centre
+    cursor.Untransform(&cubeCs);
+    snapColor(0, 0, colorArray->getColor(cursor));
+    Serial.println("Rotating part");
+    for (uint8_t y = 0; y < 2; y++) {       //for edges and corners
+      cursor.SetC(1, y, 2);                 //initial cursor
+      for (uint8_t oa = 0; oa < 4; oa++) {  //all rotations of cursor
+        cursor.rotate(2, 1);                //clockwise in scannerCs is counter clockwise
+        Serial.print("Local:\t");
+        cursor.Cords();
+        sPnl();
+        Vec target = cursor;
+        target.Transform(&scannerCs);                                       //how it looks in real life
+        Serial.print("Real:\t");
+        target.Cords();
+        sPnl();
+        target.Untransform(&cubeCs);                                    //how it looks from cube
+        Serial.print("Cube:\t");
+        target.Cords();
+        sPnl();
+        snapColor(cursor.c[0], cursor.c[1], colorArray->getColor(target));  //snap color into array
+      }
+    }
+    stopDisco();
   }
 private:
   static uint8_t zIndex(int8_t x, int8_t y) {  //zIndex by coordinates
@@ -500,6 +575,7 @@ private:
     index -= !up;  //index = code of bridge
     Serial.print("Bridge ");
     Serial.println(index);
+    // waitIn();
     if (index <= 7)  //ok operation
       switch (index) {
         case 2:  //left-Z-2-false; right-~y-4-true
@@ -525,3 +601,15 @@ private:
   }
 };
 ClawMotorics motorics;
+void fullScan() {
+  CsT* cubeCs = motorics.getCube();
+  for (uint8_t i = 0; i < 4; i++) {
+    motorics.scanCurrentSide();
+    motorics.go(SubOperation(true, 4, 1));
+  }
+  motorics.go(SubOperation(true, 2, 1));
+  motorics.go(SubOperation(true, 4, 1));
+  motorics.scanCurrentSide();
+  motorics.go(SubOperation(true, 4, 2));
+  motorics.scanCurrentSide();
+}

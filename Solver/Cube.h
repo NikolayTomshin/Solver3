@@ -1,3 +1,4 @@
+#include <stdint.h>
 #pragma once
 #include "Path.h"
 //file for dealing with virtual cube
@@ -37,18 +38,119 @@ struct State {
 
 };  //State
 struct Color {
-  uint16_t component[3];
+  uint8_t component[3];
+  Color(uint8_t r, uint8_t g, uint8_t b) {
+    component[0] = r;
+    component[1] = g;
+    component[2] = b;
+  }
+  Color(){};
+  void print() {
+    Serial.print("Col: \t");
+    for (uint8_t i = 0; i < 3; i++) {
+      Serial.print(component[i]);
+      Serial.write('\t');
+    }
+    Serial.write('\n');
+  }
+  void printLetter() {
+    float p = arSum<uint8_t>(component, 3) / 3.0;
+    float props[3];
+    for (uint8_t i = 0; i < 3; i++) {
+      props[i] = (component[i] - 0.707106 * (component[Mod3(i + 1)] + component[Mod3(i + 2)])) / p;
+    }
+    for (uint8_t i = 0; i < 3; i++) {
+      if (inMargin<float>(props[i], 0.75, 0.25))
+        switch (i) {
+          case 0:
+            Serial.print("R");
+            return;
+          case 1:
+            Serial.print("G");
+            return;
+          case 2:
+            Serial.print("B");
+            return;
+        }
+    }
+    for (uint8_t i = 0; i < 3; i++) {
+      if ((props[i] > 0) == (props[Mod3(i + 1)] > 0))
+        switch (i) {
+          case 0:
+            Serial.print("Y");
+            return;
+          case 1:
+            Serial.print("C");
+            return;
+          case 2:
+            Serial.print("P");
+            return;
+        }
+    }
+    if (p > 40) {
+      Serial.print("W");
+      return;
+    } else {
+      Serial.print("D");
+      return;
+    }
+  }
 };
 
-extern uint8_t* indexedTiles;
-extern Color* colorTiles;     //colors for all tiles
-extern Color colorPallet[6];  //6 x color
-
-void initializeColors();
-void setColorTile(uint16_t r, uint16_t g, uint16_t b);
-//scanner sets colorTiles
-void indexColors();
-void setPieces();
-void deleteColors();
+struct CubeArray {
+  Color arr[54];
+  CubeArray() {
+    for (uint8_t i = 0; i < 54; i++) {
+      arr[i] = Color(0, 0, 0);
+    }
+  }
+  void copy(Color arrc[]) {
+    for (uint8_t i = 0; i < 54; i++) {
+      arr[i] = arrc[i];
+    }
+  }
+  Color* getColor(Vec vector) {  //lindex for indexedTiles
+                                 //vector around 3x3 (single component=2, other [-1;1] ) cube
+    uint8_t axis;                //axis
+    for (axis = 0; axis < 3; axis++) {
+      if (abs(vector.c[axis]) == 2) {
+        break;
+      }
+    }
+    //6 sides each containing 9 tilesб 3 axis * 2 directions; 3 positions on second axis * 3 positions on third axis
+    uint8_t index = 9 * (axis + 3 * (vector.c[axis] < 0)) + 3 * (vector.c[Mod3(axis + 1)] + 1) + (vector.c[Mod3(axis + 2)] + 1);
+    Serial.print("Accessing");
+    vector.Cords();
+    Serial.print(" at\t");
+    Serial.println(index);
+    return &arr[index];
+  }
+  void print() {
+    for (uint8_t ov = 0; ov < 6; ov++) {
+      for (int8_t y = 1; y > -2; y--) {
+        for (int8_t x = -1; x < 2; x++) {
+          arr[9 * ov + 3 * (y + 1) + x + 1].printLetter();
+        }
+        Serial.print('\n');
+      }
+      Serial.print('\n');
+    }
+  }
+  void printInitialization() {
+    Serial.print("Color *testArr[]=new Color[54]{");
+    for (uint8_t i = 0; i < 54; i++) {
+      Serial.print("Color(");
+      for (uint8_t j = 0; j < 3; j++) {
+        Serial.print(arr[i].component[j]);
+        if (j < 2)
+          Serial.print(",");
+      }
+      Serial.print(")");
+      if (i < 53)
+        Serial.print(",\n");
+    }
+    Serial.print("};");
+  }
+};
 
 }  //ns Cube

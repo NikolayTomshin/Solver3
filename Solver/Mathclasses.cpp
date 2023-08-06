@@ -29,3 +29,10 @@ float floatSigned(float value, bool positive) {
     return value;
   return -value;
 }
+uint8_t arcQuarter(int8_t x, int8_t y) {
+  if (y > 0)
+    return (x <= 0);
+  else if (y < 0)
+    return 2 + (x >= 0);
+  else return 2 * (x < 0);
+}

@@ -1,3 +1,4 @@
+#include "USBAPI.h"
 #pragma once
 #include "Vec.h"
 //third math file describing Cs Transformable which are being used
@@ -27,19 +28,32 @@ struct CsT : public Cs {
     : Cs(i, j, k) {}
   void rotate(int8_t axisOVIndex, int8_t rightAngles) {
     Vec v;
+    sPnl();
+    Serial.print("Rotating axis ");
+    Serial.println(axisOVIndex);
+    Serial.print("Right angles ");
+    Serial.println(rightAngles);
     for (int8_t i = 0; i < 3; i++) {
-      // Serial.print("Rotating ");
-      // Serial.print("i=");
-      // Serial.print(i);
-      // Serial.print("; Cs vec [");
+      Serial.print("Rotating ");
+      Serial.print("i=");
+      Serial.print(i);
+      Serial.print("; Cs vec [");
+
       v = Ovecs[getComponent(i)];
-      // Serial.print(ON[i]);
-      // Serial.print("];");
+
+      printLetter(getComponent(i));
+      Serial.print("];");
+      v.Cords();
+
       v.rotate(axisOVIndex, rightAngles);
-      // Serial.print("Rotated [");
+      Serial.print("->");
+      v.Cords();
+      Serial.print("Rotated [");
+
       setComponent(i, V::GetON(v));
-      // Serial.print(ON[i]);
-      // Serial.println("]");
+
+      printLetter(getComponent(i));
+      Serial.println("]");
     }
   }
   void rotate(uint8_t ov) {

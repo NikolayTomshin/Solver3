@@ -4,13 +4,13 @@
 #include "Cube.h"
 #include <Servo.h>
 #include "Animation.h"
+#define colorLag 5
 
 const bool discMap[2][4] = { { 0, 1, 1, 0 },
                              { 0, 0, 1, 1 } };  //map of claw disk sectors (half)
 Timer grabDelay = Timer(60);
 
 struct DiscoData {
-  PID pid;
   //     <-cw    |      .
   //    0 | 1    |      1
   //   ---O---   |   -0-O-2-
@@ -20,12 +20,11 @@ struct DiscoData {
   uint8_t discoState = 0;  //0 wait for syncg; 1 setting up speed;
   uint8_t rotations = 0;
   uint8_t quarterIndex = 0;  //index of current quarter(0..3)
-  float average = 0;
-  float quarters[4] = { 0 };  //times of quartes 0-2, 2-4, 4-6, 6-8(0)
-  bool enableLog = true;      //
+  uint16_t lastRound = 0;
+  uint16_t quarters[4] = { 0 };  //times of quartes 0-2, 2-4, 4-6, 6-8(0)
+  bool lowError = false;
   DiscoData(uint8_t _startOA) {
     startOA = _startOA;
-    pid = PID(0.2, 0.00005, 35);
   }
   ~DiscoData() {
     Serial.println("Disco deleted");
@@ -48,6 +47,9 @@ struct DiscoData {
       Serial.write('\t');
     }
     Serial.write('\n');
+  }
+  bool lastLowError() {
+    return abs(quarters[getQIndex(-1)] - lastRound / 4) == 1;
   }
 };
 DiscoData* disco;  //only for disco time
@@ -175,8 +177,8 @@ public:
   void setGrab(uint8_t positionIndex, uint8_t minusDelta = 0) {
     setServo(grabPositions[positionIndex] - minusDelta);
     grabState = positionIndex;
-    Serial.print("SG");
-    Serial.println(grabState);
+    // Serial.print("SG");
+    // Serial.println(grabState);
   }
   void ease() {
     if (grabState > 0)
@@ -386,40 +388,50 @@ public:
     setGrab(1, 15);
   }
   bool nextQ() {
-    return (Mod(4, (currentRotation / 2) - disco->startOA)) == disco->getQIndex(1);
+    return !(disco->getQIndex(1 - ((currentRotation / 2) - disco->startOA)));
   }
-  void discUpdate() {  //read timings and control speed
-
-    if (shouldCheckIfActionIsNeeded) {  //after rotation update
-      if (nextQ()) {
-        // Serial.println("NextQ");
-        disco->setQTime(&arrivalTime);
-        arrivalTime.resetTime();      //enter time for past Q
-        disco->incQIndex();           //inc Q index
-        if (disco->getQIndex() == 0)  //if full circle inc rotations
-        {
-          disco->rotations++;
-          // Serial.println("Rotated!:D");
-        }
-        switch (disco->discoState) {
-          case 0:  //first round
-            if (disco->rotations > 0)
-              disco->discoState = 1;
-            break;
-          case 1:  //control speed
-            float sum = arSum<float>(disco->quarters, 4);
-            Serial.print(sum);
-            Serial.write('\t');
-            float delta = sum - 288.0;
-            float thisPower = doubleLimits<float>(motorForce + disco->pid.deltaSignal(delta), chaseMinPower + 30, 240.0);
-            // disco->pid.print();
-            Serial.println(thisPower);
-            runRotationMotor(1, thisPower);
-        }
+  void discUpdate() {                              //read timings and control speed
+    if (shouldCheckIfActionIsNeeded && nextQ()) {  //after rotation update
+      // Serial.println("NextQ");
+      disco->setQTime(&arrivalTime);
+      arrivalTime.resetTime();      //enter time for past Q
+      disco->incQIndex();           //inc Q index
+      if (disco->getQIndex() == 0)  //if full circle inc rotations
+      {
+        disco->rotations++;
       }
+      uint16_t sum = arSum<uint16_t>(disco->quarters, 4);
+      uint16_t delta = sum - disco->lastRound;
+      disco->lowError = abs(delta) <= 1;
+      disco->lastRound = sum;
     }
   }
-
+  bool isTimeToShoot(uint8_t targetOA, float phaseShiftRelativeToQuarter, float sizeRelativeToQuarter) {
+    //                                     Middle of target window
+    //                                              |
+    //                          window left border  |  window right border
+    //                                           |<-+->|=sizeRelativeToQuarter
+    //                                           |  T  |
+    //         phaseShiftRelativeToQuarter=|<----|->|  |
+    //           ------[-1]---------------[0]----[windw]----[1]--
+    //           previous=current       targetOA            next
+    //localeRelativeTime=|------->|        |
+    //                            |<-------|=timePassed+distanceToCurrent(=-1)
+    if (disco->lowError && disco->lastLowError())  //condition of low error at this moment
+    {
+      int8_t currIndex = disco->getQIndex();                                                                 //current index of disco
+      float localeRelativeTime = (float(arrivalTime.timePassed()) + colorLag) / disco->quarters[currIndex];  //relative time in current Q
+      sizeRelativeToQuarter /= 2;                                                                            //make half of width
+      localeRelativeTime += cycleDistanceVector(targetOA, currIndex, 4);                                     //time in target Q axis
+      //    0  1    T+1C
+      //           -1 -2
+      //    3  2    C+2
+      //if locale is left of target it will decrease, else increase
+      return ((phaseShiftRelativeToQuarter - sizeRelativeToQuarter) <= localeRelativeTime) && (localeRelativeTime <= (phaseShiftRelativeToQuarter + sizeRelativeToQuarter));
+      //if [localeRelativeTime] between window borders that means time to shoot cause time window is NOW
+    }
+    return false;
+  }
   bool isDisco() {
     return arrivalState == 3;
   }
@@ -430,7 +442,9 @@ public:
         Serial.println("DISCO MODE");
         enableChase = false;  //turn off chase
         arrivalState = 3;     //mark DM
-        runRotationMotor(1, 200);
+        runRotationMotor(1, 220);
+        waitTime(300);
+        runRotationMotor(1, 255);
         arrivalTime.resetTime();
       } else {         //turniong OFF
         delete disco;  //delete DD

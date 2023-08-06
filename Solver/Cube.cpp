@@ -255,31 +255,4 @@ uint8_t State::statePenalty() {
   return penalty;
 }
 
-uint8_t* indexedTiles;
-Color* colorTiles;     //colors for all tiles
-Color colorPallet[6];  //6 x color
-
-uint8_t colorLindex(Vec vector) {  //vector around 3x3 (normak=1) cube
-  uint8_t oa;
-  for (oa = 0; oa < 3; oa++) {
-    int8_t val = vector.c[oa];
-    if (abs(val) == 2) {
-      break;
-    }
-  }
-  return (9 * oa + 3 * (vector.c[(oa + 1) % 3] + 1) + vector.c[(oa + 2) % 3] + 1);
-}
-Vec numberOfSimilar(uint8_t palletIndex, Color* delta) {
-  Vec n(0, 0, 0);
-  for (uint8_t i = 0; i < 54; i++) {
-    Color* colorP = &colorTiles[i];
-    for (uint8_t c = 0; c < 3; c++) {
-      if (abs(colorP->component[c] - colorPallet[palletIndex].component[c]) <= delta->component[c]) {
-        n.c[c]++;
-      }
-    }
-  }
-  return n;
-}
-
 }  //ns Cube

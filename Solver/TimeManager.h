@@ -212,6 +212,7 @@ void waitTime(long millis) {
 }
 #include "Mathclasses.h"
 class PID {
+  uint8_t encodedBools = 0b00000111;
   float p = 1, i = 1, d = 1;
   float error = 0;
   float integral = 0;
@@ -229,11 +230,14 @@ public:
     float dTime = float(timer.timePassed());  //delta time
     if (dTime) {                              //if time passed
       integral += _error * dTime;
-      storedSignal = p * _error + i * integral + d * (_error - error) / dTime;  //calculate signal
+      storedSignal = p * (_error * (encodedBools & 1) + i * integral * (encodedBools & 2) + d * (_error - error) / dTime * (encodedBools & 4));  //calculate signal
       error = _error;
       timer.resetTime();
     }  //else return old signal
     return (storedSignal);
+  }
+  void setComponent(uint8_t pidIndex, bool enable) {
+    bitCoding::writeBits(pidIndex, 1, enable, &encodedBools);
   }
   void print() {
     Serial.print("Er=");

@@ -26,35 +26,35 @@ void setup() {
   Serial1.begin(115200);
   Serial.begin(9600);
   robotState = new StandBy;
+  tcs.begin();
   // while (!Serial1)
   //   ;
   while (!Serial)
     ;
-
-
-  Serial.println("Together");
+  // waitIn();
+  
+  CsT test;
+  test.printLetters();
+  test.rotate(4,1);
+  test.printLetters();
+  
   setLed(0);
   n1.getTogether();
   n2.getTogether();
   waitAnything(2, 2);
-  syncGrab(1);
-  motorics.setState();
-  while (true) {
-    motorics.go(SubOperation(0, -1));
-    waitIn();
-    motorics.goDisco(false);
-    waitIn();
-    scanner.goPosition(1);
-    waitIn();
-    scanner.goPosition(0);
-    waitIn();
-    Serial.print("Stopping disco");
-    motorics.stopDisco();
-  }
-  // motorics.go(SubOperation(1, 1));
-  // motorics.go(SubOperation(0, 1));
-  // Serial.print("reached -1,1");
-  // motorics.go(SubOperation(1,-1));
+  open();
+  motorics.setState(0, 0);
+  waitIn();
+  // colorArray = new Cube::CubeArray;
+  motorics.getCube()->printLetters();
+  // motorics.scanCurrentSide();
+  motorics.go(SubOperation(true,4,1));
+  motorics.getCube()->printLetters();
+  // motorics.scanCurrentSide();
+  // fullScan();
+  // colorArray->printInitialization();
+  motorics.go(SubOperation(0,0));
+  open();
 
   // for (uint8_t i = 0; i < 24; i++) {
   //   Serial.print(i);
