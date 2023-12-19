@@ -38,6 +38,8 @@ public:
   // }
   Scanner() {}
   Scanner(uint8_t sC, uint16_t degreesPerSec) {
+    pinMode(13, OUTPUT);
+    setLed(0);
     servo.attach(sC);
     servo.teleport(-180.0);
     servo.setSpeed(degreesPerSec);
@@ -349,9 +351,14 @@ void waitIn() {
   Serial.print("waiting");
   while (!Serial.available())
     systemUpdate();
+  ;
   Serial.read();
 }
 Cube::CubeArray* colorArray;
+void initializeCubeArray(){
+  if (colorArray == NULL)
+    colorArray = new Cube::CubeArray;  
+}
 class ClawMotorics {  //this is very complicated and requires documentation
   /*
   left servo
@@ -417,13 +424,15 @@ public:
       bool notCentre = localX || localY;
       bool edge = bool(localX) != bool(localY);
       scannerAction(3 - notCentre * (2 - edge));
-      if (notCentre) {
-        while (!getBlock(discoStatus)->isTimeToShoot(arcQuarter(localX, localY), edge ? -0.2 : 0.3, 0.03)) {
-          systemUpdate();
+      do {
+        if (notCentre) {
+          while (!getBlock(discoStatus)->isTimeToShoot(arcQuarter(localX, localY), edge ? -0.2 : 0.3, 0.03)) {
+            systemUpdate();
+          }
         }
-      }
-      // Serial.println("Ready to snap");
-      scanner.snap(targetColor);
+        // Serial.println("Ready to snap");
+        scanner.snap(targetColor);
+      } while (targetColor->sum() < 15);
       disco->lowError = false;
     } else Serial.print("Can't snap without disco");
   }
@@ -432,7 +441,7 @@ public:
     Serial.print("Starting pos");
     stopDisco();
     waitAnything(3, 2);
-    waitAnything(1, 2);
+    waitAnything(2, 2);
     printCords();
     if (targetOperation.isOperation()) {  //do operation via shortest path
       int8_t angle = targetOperation.getAngle();
@@ -531,11 +540,11 @@ skipYIncrement:
         cursor.Cords();
         sPnl();
         Vec target = cursor;
-        target.Transform(&scannerCs);                                       //how it looks in real life
+        target.Transform(&scannerCs);  //how it looks in real life
         Serial.print("Real:\t");
         target.Cords();
         sPnl();
-        target.Untransform(&cubeCs);                                    //how it looks from cube
+        target.Untransform(&cubeCs);  //how it looks from cube
         Serial.print("Cube:\t");
         target.Cords();
         sPnl();
@@ -602,7 +611,7 @@ private:
 };
 ClawMotorics motorics;
 void fullScan() {
-  CsT* cubeCs = motorics.getCube();
+  initializeCubeArray();
   for (uint8_t i = 0; i < 4; i++) {
     motorics.scanCurrentSide();
     motorics.go(SubOperation(true, 4, 1));

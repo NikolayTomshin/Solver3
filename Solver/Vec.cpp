@@ -48,9 +48,9 @@ void Vec::Transform(Cs *cs) {  //rebuild in cs
     temp[i] = c[i];
   }
   for (i = 0; i < 3; i++) {  //cs and vector component (ort and c value)
-  //x->i
-  //y->j
-  //z->k
+                             //x->i
+                             //y->j
+                             //z->k
     uint8_t ov = cs->getComponent(i);
     if (ov < 3) {           //if direction is positive
       c[ov % 3] = temp[i];  //write positive
@@ -64,7 +64,7 @@ void Vec::Untransform(Cs *cs) {  //Rebuild from cs
   for (int8_t i = 0; i < 3; i++) {  //Save cords
     temp[i] = c[i];
   }
-  for (int8_t i = 0; i < 3; i++) {//cs component (and new vector)
+  for (int8_t i = 0; i < 3; i++) {  //cs component (and new vector)
     int8_t ov = cs->getComponent(i);
     if (ov < 3) {           //if direction is positive
       c[i] = temp[ov % 3];  //write positive
@@ -126,28 +126,27 @@ uint8_t Vec::norma() {
   return (abs(c[0]) + abs(c[1]) + abs(c[2]));
 }
 
+bool Vec::equal(Vec *v) {
+  for (uint8_t i = 0; i < 3; i++) {
+    if (c[i] != v->c[i]) return false;
+  }
+  return (true);
+}
+const extern Vec Ovecs[6] = { Vec(1, 0, 0), Vec(0, 1, 0), Vec(0, 0, 1), Vec(-1, 0, 0), Vec(0, -1, 0), Vec(0, 0, -1) };
+
 namespace V {
 //Ovecs part next. Ovecs - orto-vectors - unit vectors collinear to axis of cartesian coordinates.
 //numbers from 0 to 5 correspond to 6 ortovectors: i,j,k=0,1,2; -i,-j,-k=3,4,5
 //Ovecs[6] contains prepared Vec objects with coordinates of every Ovec with corresponding indexes
 int8_t GetON(Vec v) {  //returns number of supposed ortovector. -1 if error
   // Serial.print("Getting Ovec index ");
-  for (uint8_t i = 0; i < 3; i++) {
-    int8_t a = v.c[i];
-    if (a != 0) {
-      // Serial.print("cord index=");
-      // Serial.print(i);
-      // Serial.print("; value=");
-      // Serial.print(a);
-      // Serial.print("; Assuming Ov index=");
-      // Serial.println(i + ((a < 0) ? 3 : 0));
-      return (i + ((a < 0) ? 3 : 0));
-    }
+  for (uint8_t i = 0; i < 6; i++) {
+    if (Ovecs[i].equal(&v)) return i;
   }
-  return (-1);
+  return (6);
 }
 int8_t Cord(int8_t dimensionIndex, int8_t ortovectorIndex) {  //returns value of dIndexed coordinate  of indexed ortovector
-  return (Mod3(ortovectorIndex) == dimensionIndex)*Sign(ortovectorIndex > 2, 1);
+  return (Mod3(ortovectorIndex) == dimensionIndex) * Sign(ortovectorIndex > 2, 1);
 }
 void OVSetup() {  //initialize ortovector prototypes again if you want
   for (int8_t i = 0; i < 6; i++)

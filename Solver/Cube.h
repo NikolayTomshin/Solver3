@@ -95,6 +95,9 @@ struct Color {
       return;
     }
   }
+  uint16_t sum() {
+    return uint16_t(component[0]) + uint16_t(component[1]) + uint16_t(component[2]);
+  }
 };
 
 struct CubeArray {

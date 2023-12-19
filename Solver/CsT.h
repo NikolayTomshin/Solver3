@@ -49,10 +49,10 @@ struct CsT : public Cs {
       Serial.print("->");
       v.Cords();
       Serial.print("Rotated [");
+      uint8_t temp = V::GetON(v)%7;
+      setComponent(i, temp);
 
-      setComponent(i, V::GetON(v));
-
-      printLetter(getComponent(i));
+      printLetter(temp);
       Serial.println("]");
     }
   }

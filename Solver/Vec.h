@@ -18,9 +18,10 @@ struct Vec {
   void Cords();
   void Add(Vec *v, int8_t multiplier = 1);
   uint8_t norma();
+  bool equal(Vec* v);
 };
 
-const Vec Ovecs[6] = { Vec(1, 0, 0), Vec(0, 1, 0), Vec(0, 0, 1), Vec(-1, 0, 0), Vec(0, -1, 0), Vec(0, 0, -1) };
+const extern Vec Ovecs[6];
 
 namespace V {
 //Ovecs part next. Ovecs - orto-vectors - unit vectors collinear to axis of cartesian coordinates.

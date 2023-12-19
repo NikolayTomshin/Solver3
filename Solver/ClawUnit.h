@@ -164,6 +164,11 @@ public:
     grabPositions[2] = grab;
   }
   void runRotationMotor(bool clockwise, uint8_t force) {
+    // Serial.print("clockwise=");
+    // Serial.println(clockwise);
+    // Serial.print('\t');
+    // Serial.println(force);
+    
     analogWrite(mP, force);
     digitalWrite(mD, !clockwise != reverseDirection);
     motorForce = BSign(!clockwise, force);
@@ -212,8 +217,8 @@ public:
       ab[0] = _ab[0];
       ab[1] = _ab[1];  //new channel values assigning to static
       // Serial.print(mD);
-      // Serial.print(currentRotation);
-      // Serial.println(targetRotation);
+      Serial.print(currentRotation);
+      Serial.println(targetRotation);
       shouldCheckIfActionIsNeeded = true;
     }
   }
