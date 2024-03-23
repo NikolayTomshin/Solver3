@@ -71,6 +71,39 @@ ConfigurableObject::initialize(const IConfigurable* object, const String& name, 
   }
   name.toCharArray(this->name, 6);
 }
+void ConfigurableObject::print() const {
+  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+    (*config).print();
+}
+void ConfigurableObject::saveAll() const {
+  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+    (*config).save();
+}
+void ConfigurableObject::loadAll() const {
+  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+    (*config).load();
+}
+const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) const {
+#ifdef SETDebug
+  Serial.print(F("Set search configName="));
+  Serial.print(configName);
+  Serial.print(F("\t size="));
+  Serial.println(configName.length());
+#endif  //SETDebug
+  if ((trackedSettings != NULL) && (configName.length() < 6))
+    for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+      if (!configName.compareTo(String((*config).name))) {
+#ifdef SETDebug
+        Serial.println(F("Found"));
+        (*config).print();
+#endif  //SETDebug
+        return *config;
+      }
+#ifdef SETDebug
+  Serial.println(F("Not found"));
+#endif  //SETDebug
+  return ConfigWithPtr();
+}
 
 void EEPROM_register::addObject(IConfigurable* object, const String& name) {
   uint16_t nextPtr = 0;
@@ -98,73 +131,40 @@ void EEPROM_register::addObject(IConfigurable* object, const String& name) {
 #endif  //SETDebug
   trackedObjects.peek().initialize(object, name, nextPtr);
 }
-
 EEPROM_register::EEPROM_register() {
-  addObject(this, "reg");
+  //addObject(this, "reg");
 }
-
-const uint8_t EEPROM_register::numberOfConfigs() const {
-  return 1;
-}
-Config EEPROM_register::getConfig(uint8_t index) const {
-  return Config(&loadAll, sizeof(bool), F("autoLd"), Config::Type::Bool);
+const ConfigurableObject& EEPROM_register::getConfObject(const String& objName) const {
+#ifdef SETDebug
+  Serial.print(F("Obj search name="));
+  Serial.println(objName);
+#endif  //SETDebug
+  if (objName.length() <= 6)
+    for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++) {
+#ifdef SETDebug
+      Serial.print(F("Comparing to "));
+      Serial.println((*confObject).name);
+#endif  //SETDebug
+      if (!objName.compareTo(String((*confObject).name))) {
+#ifdef SETDebug
+        Serial.println(F("Found obj"));
+#endif  //SETDebug
+        return *confObject;
+      }
+    }
+  return ConfigurableObject();
 }
 
 const ConfigWithPtr& EEPROM_register::getSetting(const String& path) const {
-  int end = limits(path.indexOf("/"), 5);
-  String searchName = path.substring(0, end++);
-
-#ifdef SETDebug
-  Serial.print(F("Obj search name="));
-  Serial.println(searchName);
-#endif  //SETDebug
-  bool foundObj = false;
-  const Array<ConfigWithPtr>* arr;
-  for (StackIterator<ConfigurableObject> i(trackedObjects); !i.isEnd(); i++) {
-
-#ifdef SETDebug
-    Serial.print(F("Comparing to "));
-    Serial.println((*i).name);
-#endif  //SETDebug
-    if (!searchName.compareTo(String((*i).name))) {
-      arr = (*i).trackedSettings;
-      foundObj = true;
-#ifdef SETDebug
-      Serial.println(F("Found obj"));
-#endif  //SETDebug
-      break;
-    }
-  }
-  if (foundObj) {
-    uint8_t size = arr->getSize();
-    searchName = path.substring(end, path.length());
-#ifdef SETDebug
-    Serial.print(F("Set search name="));
-    Serial.print(searchName);
-    Serial.print(F("\t size="));
-    Serial.println(size);
-#endif  //SETDebug
-    for (uint8_t i = 0; i < size; i++) {
-      const ConfigWithPtr& conf = (*arr)[i];
-#ifdef SETDebug
-      conf.print();
-#endif  //SETDebug
-      if (!searchName.compareTo(String(conf.name))) {
-#ifdef SETDebug
-        Serial.println(F("Found"));
-#endif  //SETDebug
-        return conf;
-      }
-    }
-  }
-#ifdef SETDebug
-  Serial.println(F("Not found"));
-#endif  //SETDebug
-  return ConfigWithPtr();
+  int separatorIndex = path.indexOf("/");
+  return getConfObject(path.substring(0, separatorIndex - 1)).getSetting(path.substring(separatorIndex + 1, path.length() - 1));
 }
 
 void EEPROM_register::loadAllConfigs() const {
   for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++)
-    for (ArrayIterator<ConfigWithPtr> config(*((*confObject).trackedSettings)); !config.isEnd(); config++)
-      (*config).load();
+    (*confObject).loadAll();
+}
+void EEPROM_register::saveAllConfigs() const {
+  for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++)
+    (*confObject).saveAll();
 }

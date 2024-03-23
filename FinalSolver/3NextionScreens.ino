@@ -4,15 +4,16 @@
 void FestControl::activate() {
   co.updateTopMessage(F("Можно брать и\r\n класть кубик"));
   setScreen(co);
-  rm.setHistorySave(&festControl.ops);
+  rm.setHistorySave(&ops);
 }
 void FestControl::disable() {
   rm.setHistorySave();
+  delete this;
 }
 
 //Fest Control screens
 void CO::loadScreen() {
-  goPage(F("CO"));
+  goNextionPage(F("CO"));
   loadMessage();
   loadControl();
 }
@@ -32,33 +33,33 @@ void CO::updateControl(bool enabled) {
   if (isActive) loadControl();
 }
 const CommandSet& CO::getCommandSet() const {
-  return demoSet;
+  return demoSet();
 };
 
 void BE::loadScreen() {
-  goPage(F("BE"));
+  goNextionPage(F("BE"));
 }
 const CommandSet& BE::getCommandSet() const {
-  return begSet;
+  return begSet();
 };
 
 void EE::loadScreen() {
-  goPage(F("EE"));
+  goNextionPage(F("EE"));
 }
 const CommandSet& EE::getCommandSet() const {
-  return retSet;
+  return retSet();
 };
 
 void SES::loadScreen() {
-  goPage(F("SS"));
+  goNextionPage(F("SS"));
   for (uint8_t i = 0; i < 4; ++i) {
-    String s=F("h ");
-    s[1]=digitOf(i);
-    loadVal(s,rm.scanner.servoAngles[i]);
-    s[0]='n';
-    loadVal(s,rm.scanner.servoAngles[i]);
+    String s = F("h ");
+    s[1] = digitOf(i);
+    loadVal(s, rm.scanner.servoAngles[i]);
+    s[0] = 'n';
+    loadVal(s, rm.scanner.servoAngles[i]);
   }
 }
 const CommandSet& SES::getCommandSet() const {
-  return scannerServoSetD;
+  return scannerServoSetD();
 };

@@ -11,6 +11,13 @@ public:
     currentState = &rs;
     rs.activate();
   }
+  static void updateActive() {
+    if (currentState != NULL)
+      currentState->update();
+  }
+  static RobotState* getActiveState() {
+    return currentState;
+  }
 };
 RobotState* RobotState::currentState = NULL;
 
@@ -48,29 +55,32 @@ public:
 class BE : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
-  
+
   friend void beginCubeControlD();
 };
 class EE : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
-  
+
   friend void dialogueYes();
   friend void dialogueCancel();
 };
 class SES : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
-  
+
   friend void scannerServoGoD();
 };
 
 class FestControl : public PassiveState {
   virtual void activate() override;
   virtual void disable() override;
-public:
+protected:
   CO co;
+public:
   OperationStack ops;
+  void scrambleCube(uint8_t moves);
+  void proceedRet();
 };
 
 
@@ -84,6 +94,15 @@ class CD : public NextionScreen {
   virtual const CommandSet& getCommandSet() const override;
 };
 class CC : public NextionScreen {
+  virtual void loadScreen() override;
+  virtual const CommandSet& getCommandSet() const override;
+};
+
+class BiosInvite : public DialogueScreen {
+  virtual void loadScreen() override;
+  virtual const CommandSet& getCommandSet() const override;
+};
+class Bios : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
 };

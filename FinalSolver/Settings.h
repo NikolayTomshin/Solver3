@@ -33,7 +33,8 @@ public:
     Float,
     Binary,
     String,
-    Complicated
+    Complicated,
+    Enum
   };
 protected:
   Type type;
@@ -70,43 +71,34 @@ public:
     if (trackedSettings != NULL)
       delete trackedSettings;
   }
+  void print() const;
+  void saveAll() const;
+  void loadAll() const;
+
+  const ConfigWithPtr& getSetting(const String& configName) const;  //exact name
 
   friend class EEPROM_register;
 };
 
-class EEPROM_register : public IConfigurable {  //2-level regestry of ConfigurableObjects
+class EEPROM_register {  //2-level registry of ConfigurableObjects
 protected:
   ValueStack<ConfigurableObject> trackedObjects;
 public:
-  bool loadAll = false;
 
   void addObject(IConfigurable* object, const String& name);
   EEPROM_register();
 
-  virtual const uint8_t numberOfConfigs() const override;  //how many
-  virtual Config getConfig(uint8_t index) const override;  //get by index
-
   uint8_t numberOfObjects() const;               //how many
   uint8_t numberOfConfigs(uint8_t index) const;  //get by index
 
-  const ConfigWithPtr& getSetting(const String& path) const;
-  void loadAllConfigs() const;
-};
+  const ConfigurableObject& getConfObject(const String& objName) const;  //search for exact "name"
+  const ConfigWithPtr& getSetting(const String& path) const;             //search as "objNam/confNm"
 
-/*class Test : public IConfigurable {
-  int a, b, c;
-  virtual const uint8_t numberOfConfigs() const override {
-    return 2;
-  }
-  virtual Config getConfig(uint8_t index) const override {
-    switch (index) {
-      case 0: return Config((char*)&a, sizeof(a), "a");
-      case 1: return Config((char*)&b, sizeof(b), "b");
-    }
-    return Config();
-  }
+  void saveAllConfigs() const;
+  void loadAllConfigs() const;
+
+  friend void setup();
 };
-*/
 //==================================================================================================================================================================
 template<class T>
 T& Config::getReference() const {

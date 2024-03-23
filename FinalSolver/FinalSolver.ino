@@ -6,29 +6,30 @@
 #include "SCom.h"
 #include "RStates.h"
 
-//Robot States
-DoNothing doNothing;
-FestControl festControl;
-
 //System components
 RobotMotorics rm(6 /*7*/);  //Motorics object
 
 SecondaryListener cm2;                    //detecting nextion AWakenings
-PortListener cm(&Serial1, NXBAUD, &cm2);  //nextion main communications
+PortListener cm(&Serial1, NXBAUD, &cm2);  //nextion main communications + secondary listener cm2
 PortListener pcm(&Serial, PCBAUD);        //pc communications
 
 EEPROM_register reg;
 
 void fullSystemUpdate() {  //update with communications
-  rm.update();
+  rm.update();             //robot motorics
+
   cm.update();
-  pcm.update();
-}
-void hardwareUpdate() {  //update hardware only
-  rm.update();
+  pcm.update();  //port listeners
+
+  RobotState::updateActive();     //update robot state
+  NextionScreen::updateActive();  //update current screen;
 }
 
 //Command void batches [{declarations, array},...]
+void listEvent();
+comIterator listVoids(uint8_t i) {
+  return &listEvent;
+}
 void startStart();  //start voids
 comIterator startVoids(uint8_t i) {
   return &startStart;
@@ -90,17 +91,33 @@ comIterator pcVoid(uint8_t i) {
 }
 
 //Command char[][] arrays
+const char PROGMEM listChars[1][4] = { "LC\0\0" };
 const char PROGMEM startChars[1][2] = { "AW" };
 const char PROGMEM scannerServoCharsD[1][3] = { "S\0\0" };
-const char PROGMEM demoChars[10][2] = { "Y-", "Y+", "Z-", "Z+", "R-", "R+", "D-", "D+", "GG", "GO"};
+const char PROGMEM demoChars[10][2] = { "Y-", "Y+", "Z-", "Z+", "R-", "R+", "D-", "D+", "GG", "GO" };
 const char PROGMEM begCharsD[1][2] = { "B\0" };
 const char PROGMEM retCharsD[2][1] = { 'C', 'Y' };
 const char PROGMEM pcChars[1][1] = { "\0" };
 
 //Command sets(CS_size, command_length, &comIterator, char[][]_ptr)
-const CommandSet startSet(1, 2, &startVoids, &startChars[0][0]);
-const CommandSet scannerServoSetD(1, 3, &scannerServoVoidsD, &scannerServoCharsD[0][0]);
-const CommandSet demoSet(10, 2, &demoVoids, &demoChars[0][0]);
-const CommandSet begSet(1, 2, &begVoidsD, &begCharsD[0][0]);
-const CommandSet retSet(2, 1, &retVoidsD, &retCharsD[0][0]);
-const CommandSet pcSet(1, 1, &pcVoid, &pcChars[0][0]);
+const CommandSet& listSet() {
+  return CommandSet(1, 4, &listVoids, &listChars[0][0]);
+}
+const CommandSet& startSet() {
+  return CommandSet(1, 2, &startVoids, &startChars[0][0]);
+}
+const CommandSet& scannerServoSetD() {
+  return CommandSet(1, 3, &scannerServoVoidsD, &scannerServoCharsD[0][0]);
+}
+const CommandSet& demoSet() {
+  return CommandSet(10, 2, &demoVoids, &demoChars[0][0]);
+}
+const CommandSet& begSet() {
+  return CommandSet(1, 2, &begVoidsD, &begCharsD[0][0]);
+}
+const CommandSet& retSet() {
+  return CommandSet(2, 1, &retVoidsD, &retCharsD[0][0]);
+}
+const CommandSet& pcSet() {
+  return CommandSet(1, 1, &pcVoid, &pcChars[0][0]);
+}

@@ -4,10 +4,12 @@ void setScreen(NextionScreen& ns) {
 char showDialogue(DialogueScreen* ds) {
   return ds->show(cm);
 }
+template<class T> T* activeState() {
+  return (T*)RobotState::getActiveState();
+}
 
-//Implementation of connabd voids
+//Implementation of command voids
 
-bool led = false;
 
 void startStart() {
   NextionScreen::reloadActive();
@@ -72,15 +74,17 @@ void fes() {
 }
 //beg
 void beginCubeControlD() {
-#ifdef DIALOGUEdebug  
+#ifdef DIALOGUEdebug
   Serial.println(F("DIALOGUE BEGIN"));
 #endif
   DialogueScreen::endDialogue(CommandSet::args[0]);
 }
-void scrambleCube(uint8_t moves) {  //после начала
-  CO& co = festControl.co;
+void scrambleCube(uint8_t moves) {
+  activeState<FestControl>()->scrambleCube(moves);
+}
+void FestControl::scrambleCube(uint8_t moves) {  //после начала
   co.updateTopMessage(F("Захватываю..."));
-  festControl.ops.clear();
+  ops.clear();
   rm.grab();    /// Что делать?
   if (moves) {  //если нужно перемешать
     co.updateTopMessage(F("Перемешиваю..."));
@@ -92,23 +96,25 @@ void scrambleCube(uint8_t moves) {  //после начала
   co.updateControl(true);
 }
 //ret
-void dialogueCancel(){
-#ifdef DIALOGUEdebug  
+void dialogueCancel() {
+#ifdef DIALOGUEdebug
   Serial.println(F("DIALOGUE CANCEL"));
 #endif
   DialogueScreen::endDialogue(0);
 }
-void dialogueYes(){
-#ifdef DIALOGUEdebug  
+void dialogueYes() {
+#ifdef DIALOGUEdebug
   Serial.println(F("DIALOGUE YES"));
 #endif
   DialogueScreen::endDialogue('Y');
 }
 
-void proceedRet() {         //собрать и отпустить
-  festControl.ops.print();  //debug log
-  rm.setSmooth(false);      //legacy control feature (not gone yet)
-  CO& co = festControl.co;
+void proceedRet() {
+  activeState<FestControl>()->proceedRet();
+}
+void FestControl::proceedRet() {  //собрать и отпустить
+  ops.print();                    //debug log
+  rm.setSmooth(false);            //legacy control feature (not gone yet)
   co.updateTopMessage(F("Делаю обратно..."));
   rm.playBack();
   co.updateTopMessage(F("Отпускаю..."));
@@ -118,6 +124,8 @@ void proceedRet() {         //собрать и отпустить
 }
 
 //pc
+bool led = false;
+
 void pcTest() {
   Serial.print(led);
   Serial.print(F(" Toggled!"));

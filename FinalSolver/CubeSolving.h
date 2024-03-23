@@ -9,7 +9,7 @@
 class Formula {
   uint8_t code;
 public:
-  enum Application {
+  enum Application : uint8_t {
     WHOLE,
     MIDDLE,
     DEEP,

@@ -22,7 +22,7 @@ bool TimeStamp::isTimePassed(unsigned long ms) const {
 static void TimeStamp::waitFor(unsigned long time) {
   TimeStamp temp = now();
   while (!temp.isTimePassed(time))
-    hardwareUpdate();
+    fullSystemUpdate();
 }
 static void TimeStamp::waitUntil(TimeStamp time) {
   if (millis() < time)
@@ -198,9 +198,9 @@ Config ClawUnit::getConfig(uint8_t index) const {
     case 5:
       return Config(&rotShift, sizeof(uint8_t), F("RS"), Config::Type::Uint);
     case 6:
-      return Config(&chaseMinPower, sizeof(uint8_t), F("MinPow"), Config::Type::Uint);
+      return Config(&chaseMinPower, sizeof(uint8_t), F("MinP"), Config::Type::Uint);
     case 7:
-      return Config(&chaseBasePower, sizeof(uint8_t), F("MaxPow"), Config::Type::Uint);
+      return Config(&chaseBasePower, sizeof(uint8_t), F("MaxP"), Config::Type::Uint);
     default: return Config(&chaseDecrement, sizeof(float), F("Decr"), Config::Type::Float);
   }
 }
@@ -678,7 +678,7 @@ void Scanner::snap(Color& color) {
 void waitIn() {
   Serial.print(F("waiting"));
   while (!Serial.available())
-    hardwareUpdate();
+    fullSystemUpdate();
   Serial.read();
 }
 
@@ -824,9 +824,9 @@ const uint8_t RobotMotorics::numberOfConfigs() const {
 Config RobotMotorics::getConfig(uint8_t index) const {
   switch (index) {
     case 0: return Config(&cubeSizeDelta, sizeof(uint8_t), F("sizeD"), Config::Type::Uint);
-    case 1: return Config(&stabilityHealth, sizeof(uint8_t), F("stabHP"), Config::Type::Uint);
-    case 2: return Config(&maxSmooth, sizeof(uint8_t), F("manSm"), Config::Type::Uint);
-    default: return Config(&autoSmooth, sizeof(uint8_t), F("autoSm"), Config::Type::Uint);
+    case 1: return Config(&stabilityHealth, sizeof(uint8_t), F("HP"), Config::Type::Uint);
+    case 2: return Config(&maxSmooth, sizeof(uint8_t), F("SmthM"), Config::Type::Uint);
+    default: return Config(&autoSmooth, sizeof(uint8_t), F("SmthA"), Config::Type::Uint);
   }
 }
 
@@ -861,7 +861,7 @@ Axis RobotMotorics::getClawAxis(bool right) const {
   return Axis(2 << right);
 }
 void RobotMotorics::waitScanner() {
-  scanner.wait(&hardwareUpdate);
+  scanner.waitReady();
 }
 void RobotMotorics::waitAnything(uint8_t arrival3Grab /*0,1,2|3*/, uint8_t one2Both3Scanner) {
   // Serial.write('(');
@@ -875,7 +875,7 @@ void RobotMotorics::waitAnything(uint8_t arrival3Grab /*0,1,2|3*/, uint8_t one2B
   if (arrival3Grab < 3) {
     // Serial.println("Waiting arrival");
     while (!clawsReady(arrival3Grab, one2Both3Scanner))  //arrival
-      hardwareUpdate();
+      fullSystemUpdate();
     // test.printSince();
     return;
   }
@@ -883,7 +883,7 @@ void RobotMotorics::waitAnything(uint8_t arrival3Grab /*0,1,2|3*/, uint8_t one2B
   if (one2Both3Scanner < 4) {  //3 servos //claw or both
     // Serial.println("Waiting grabs");
     while (!servosReady(one2Both3Scanner)) {
-      hardwareUpdate();
+      fullSystemUpdate();
     }
     // test.printSince();
     return;
@@ -891,7 +891,7 @@ void RobotMotorics::waitAnything(uint8_t arrival3Grab /*0,1,2|3*/, uint8_t one2B
   //wait for all simulteneously why ever?
   // Serial.println("Waiting all servos");
   while (!(servosReady(2) && servosReady(3)))
-    hardwareUpdate();
+    fullSystemUpdate();
   // test.printSince();
 }
 
@@ -967,7 +967,7 @@ void RobotMotorics::snapColor(int8_t localX, int8_t localY, Color& targetColor) 
     do {
       if (notCentre) {
         while (!getClaw(discoStatus).isTimeToShoot(arcQuarter(localX, localY), edge ? -0.2 : 0.3, 0.03)) {
-          hardwareUpdate();
+          fullSystemUpdate();
         }
       }
       // Serial.println("Ready to snap");
@@ -1293,7 +1293,7 @@ void RobotMotorics::scramble(uint8_t moves, long seed) {
   while (randomOps.getSize())
     go(randomOps.pop());
 }
-void RobotMotorics::initialize() {
+void RobotMotorics::initializeSettings() {
   left = ClawUnit(4, 5, 9, A1, A0);    //pins
   right = ClawUnit(7, 6, 10, A3, A2);  //pins
   right.changeRotshift(true);
@@ -1305,6 +1305,11 @@ void RobotMotorics::initialize() {
   left.setChasePower(255, 130, 0.90);  //low
   right.setChasePower(250, 130, 0.85);
   scanner = Scanner(8, 400.0);
+}
+void RobotMotorics::initializeHardware() {
   scanner.goPosition(0);
-  //+
+}
+void RobotMotorics::initialize() {
+  initializeSettings();
+  initializeHardware();
 }

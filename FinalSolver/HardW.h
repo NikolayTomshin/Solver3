@@ -8,7 +8,6 @@
 
 
 void fullSystemUpdate();
-void hardwareUpdate();
 /*
 class IUpdatable
 class IReady
@@ -171,9 +170,9 @@ protected:
 
   uint8_t oscilationNumber = 0;
   TimeStamp oscilationStall;     //timer to count stall during oscilations
-  uint8_t oscilationSmooth = 0;  //set true to decrease break of first oscilation
+  uint8_t oscilationSmooth = 0;  //set true(????) to decrease break of first oscilation
 
-  uint8_t jamStatus = 0;  //0 not interested, 1 catching, 2 doing unjamming manuwer
+  uint8_t jamStatus = 0;  //0 not interested, 1 catching, 2 doing unjamming manuwer //needs refactor
   TimeStamp jamTimer;     //to get out of jam
 
   uint8_t chaseBasePower = 255;
@@ -366,7 +365,10 @@ public:
     cubeSizeDelta = sizeDelta;
     pinMode(13, OUTPUT);
   }
-  void initialize();  //set values of all hardware
+  void initialize();
+  void initializeSettings();  //set values of all hardware
+  void initializeHardware();  //
+  
   void allignBoth();  //rotate claws to default state
 
   void update() override;  //update of hardware

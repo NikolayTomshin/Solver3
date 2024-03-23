@@ -184,6 +184,7 @@ void PortListener::flushPortToSubscriber() {
   emptyPort(*port);
 }
 void PortListener::update() {
+  if (!(*port)) return;  //if no connection, abort
   if (lastUpdate.timeSince() < charLoadingTime) return;
   if (commandSet == NULL) {   //if no command set
     flushPortToSubscriber();  //try flush to subscriber
@@ -264,7 +265,7 @@ void callFunction(const String& name, const String& par0 = "") {  //{name} {pars
   Serial1.print(par0);
 }
 
-void addParametre(const String& par) {
+void addParametre(const String& par) {  //use after call function to add parameter
   Serial1.write(',');
   Serial1.print(par);
 }
@@ -275,7 +276,7 @@ void click(const String& name, bool press) {  //click {name},[press/release]
   comEnd();
 }
 
-void goPage(const String& pagename) {
+void goNextionPage(const String& pagename) {
   callFunction(F("page"), pagename);
   comEnd();
 }
@@ -285,9 +286,15 @@ const String& letterIndex(const String& letter, uint8_t index) {
 }
 
 void loadSlider(uint8_t number, uint8_t value) {
-  const String name = letterIndex("h", number);
+  const String name = letterIndex(F("h"), number);
   loadVal(name, value);
   click(name, false);
+}
+
+void setVisibility(const String& objName, bool visible) {
+  callFunction(F("vis"), objName);
+  addParametre(String(visible));
+  comEnd();
 }
 
 //NextionScreen
@@ -306,7 +313,7 @@ void NextionScreen::setActive(PortListener& port) {
 void NextionScreen::deactivateScreen(PortListener& port) {
   if (currentScreen != NULL) currentScreen->isActive = false;
   currentScreen = NULL;
-  goPage("0");
+  goNextionPage("0");
 }
 void NextionScreen::reloadActive() {
   if (currentScreen != NULL)
@@ -350,4 +357,88 @@ void DialogueScreen::endDialogue(char arg) {
   Serial.print(F("dialog arg="));
   Serial.println(arg);
 #endif
+}
+
+//PageScreen::
+//PageScreen::PageControl::
+void PageScreen::PageControl::load() {
+  setVisibility(elementNamePrefix + F("L"), showLButton);
+  setVisibility(elementNamePrefix + F("R"), showRButton);
+  loadTxt(elementNamePrefix,
+          showText ? pageFormatBefore + String(currentPage) + pageFormatSeparator + String(numberOfPages) + pageFormatAfter
+                   : String(F("")));
+}
+PageScreen::PageControl PageScreen::PageControl::simplePC(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage) {
+  return PageControl(elementNamePrefix, numberOfPages, startingPage, F("Стр. "), F("/"), F(""));
+}
+PageScreen::PageControl::PageControl(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage,
+                                     const String& pageFormatBefore, const String& pageFormatSeparator, const String& pageFormatAfter)
+  : NextionScreen::Element(elementNamePrefix) {
+  currentPage = startingPage;
+  this->numberOfPages = numberOfPages;
+  this->pageFormatBefore = pageFormatBefore;
+  this->pageFormatSeparator = pageFormatSeparator;
+  this->pageFormatAfter = pageFormatAfter;
+}
+void PageScreen::PageControl::setButtonEnabled(bool next, bool enabled) {
+  if (next)
+    showRButton = enabled;
+  else
+    showLButton = enabled;
+  String bName = elementNamePrefix + (next ? F("R") : F("L"));
+  setVisibility(bName, enabled);
+}
+bool PageScreen::PageControl::goPage(uint8_t page) {
+  if ((page < 1) || (page > numberOfPages)) return false;
+  currentPage = page;
+  setButtonEnabled(false, page > 1);
+  setButtonEnabled(true, page < numberOfPages);
+  return true;
+}
+bool PageScreen::PageControl::nextPage() {
+  return goPage(currentPage + 1);
+}
+bool PageScreen::PageControl::prevPage() {
+  return goPage(currentPage - 1);
+}
+void PageScreen::PageControl::inputEvent(const char args[]) {
+  switch (args[0]) {
+    case 'P':
+      prevPage();
+      pageScreen->prevPage();
+      return;
+    case 'N':
+      nextPage();
+      pageScreen->nextPage();
+      return;
+    case 'S':
+      pageScreen->selectPage();
+      return;
+    default:;
+  }
+}
+void CollectionScreen::CollectionControl::loadItems() const {
+  uint8_t i = 0;
+  uint8_t collectionIndex = startingItemIndex;
+  //limitIndex = collectionIndex + min(numberOfVisibleItems, restOfItemsInCollection)
+  uint8_t limitIndex = collectionIndex + minMax<uint8_t>(numberOfVisibleItems, items.getSize() - collectionIndex, false);
+  if (collectionIndex < items.getSize())  //in this case items.getSize() - collectionIndex would result in overflow
+    while (collectionIndex < limitIndex) {
+      items[collectionIndex]->loadItem(elementNamePrefix, i);
+      ++i;
+      ++collectionIndex;
+    }
+  for (; i < numberOfVisibleItems; ++i)
+    hideItem(i);
+}
+void CollectionScreen::CollectionControl::setItemVisible(uint8_t i, bool visible) const {
+  if (i >= numberOfVisibleItems) return;
+  if (visible) {
+    uint8_t collectionIndex = startingItemIndex + i;
+    if (collectionIndex < items.getSize()) {  //if item exist
+      items[collectionIndex]->loadItem(elementNamePrefix, i);
+      return;
+    }
+  }
+  hideItem(i);
 }

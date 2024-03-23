@@ -18,6 +18,7 @@ char digitOf(uint8_t i);
 
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength);
 
+template<class T> T minMax(T a, T b, bool max);
 template<class T> T assignSign(bool positive, T argument);
 template<class T> T flipSign(bool flip, const T& argument);
 template<class T> T limits(T value, T limit, bool upperLimit = true);
@@ -178,8 +179,10 @@ public:
 };
 template<class T> class PointerArray : public Array<T*> {
 public:
-  PointerArray(const uint8_t i)
-    : Array<T*>(i) {}
+  PointerArray(const uint8_t size)
+    : Array<T*>(size) {
+    for (uint8_t i = 0; i < size; i++) this->values[i] = NULL;
+  }
   T* take(uint8_t i);
   ~PointerArray();
 };
@@ -383,6 +386,9 @@ template<class T> void StackIterator<T>::updatePtrs() {
   }
 }
 //
+template<class T> T minMax(T a, T b, bool max) {
+  return (max == (a > b)) ? a : b;
+}
 template<class T> T assignSign(bool positive, T argument) {
   return (argument < 0) != positive ? argument : -argument;
 }
