@@ -8,6 +8,8 @@
 void spn();
 
 bool& f(bool& other);
+const String& boolStr(bool value);
+bool fromString(const String& boolString);
 
 int8_t Mod(int8_t period, int8_t argument);
 int8_t Mod3(int8_t argument);
@@ -15,8 +17,12 @@ int8_t Mod4(int8_t argument);
 int8_t Mod8(int8_t argument);
 
 char digitOf(uint8_t i);
+uint8_t valueOf(char c);
 
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength);
+
+uint16_t endOfTheLine(const String& string, const uint8_t& lineSize, const uint16_t& lineStart, const String& separator);
+uint16_t indexOfSkipping(const String& string, uint16_t startingIndex, const String& separator, bool directionForward = true);
 
 template<class T> T minMax(T a, T b, bool max);
 template<class T> T assignSign(bool positive, T argument);
@@ -42,7 +48,8 @@ uint8_t arcQuarter(int8_t x, int8_t y);
 template<class T> void swap(T& a, T& b);
 template<class T> bool sort(T& a, T& b, bool ascending);
 
-template<class T> T& getRef(char* ptr);
+template<class T> T& getRef(void* ptr);
+
 
 template<class T> class IIterator {
 protected:
@@ -78,7 +85,7 @@ private:
 
 class ICollection {
 public:
-  virtual uint8_t getSize() const = 0;
+  virtual uint8_t getSize() const = 0;  
 };
 
 template<class T> class StackIterator;  //forward declaration
@@ -166,12 +173,14 @@ public:
 template<class T> class ArrayIterator;
 template<class T> class Array : public ICollection {
 protected:
-  uint8_t size;
-  T* values;
+  uint8_t size = 0;
+  T* values = NULL;
 public:
   uint8_t getSize() const override;
   ~Array();
+  Array() {}
   Array(const uint8_t size);
+  Array(const uint8_t size, T* values);
   T& operator[](uint8_t index);
   const T& operator[](uint8_t index) const;
   T& last();
@@ -179,6 +188,8 @@ public:
 };
 template<class T> class PointerArray : public Array<T*> {
 public:
+  PointerArray()
+    : Array<T*>() {}
   PointerArray(const uint8_t size)
     : Array<T*>(size) {
     for (uint8_t i = 0; i < size; i++) this->values[i] = NULL;
@@ -196,8 +207,8 @@ protected:
 //===================realization===================================================================================================
 //=================================================================================================================================
 //stack
-template<class T> T& getRef(char* ptr) {
-  return (T&)*ptr;
+template<class T> T& getRef(void* ptr) {
+  return *((T*)ptr);
 }
 template<class T> ArrayIterator<T>::ArrayIterator(const Array<T>& array) {
   this->collection = &array;
@@ -211,6 +222,10 @@ template<class T> T& Array<T>::last() {
 template<class T> Array<T>::Array(const uint8_t size) {
   this->size = size;
   values = new T[size];
+}
+template<class T> Array<T>::Array(const uint8_t size, T* values) {
+  this->size = size;
+  this->values = values;
 }
 template<class T> Array<T>::~Array() {
   delete[] values;
@@ -410,6 +425,8 @@ template<class T> T absLimits(T value, T limit, bool upperLimit = true) {
   }
   return value;
 }
+
+
 template<class T> T arSum(T arr[], uint8_t size) {
   T sum = 0;
   for (uint8_t i = 0; i < size; i++) {

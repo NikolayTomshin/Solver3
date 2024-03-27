@@ -24,11 +24,14 @@ void fullSystemUpdate() {  //update with communications
   RobotState::updateActive();     //update robot state
   NextionScreen::updateActive();  //update current screen;
 }
+void screenInputEvent() {  //call input event function on active screen
+  NextionScreen::getActiveScreen()->inputEvent();
+}
 
 //Command void batches [{declarations, array},...]
-void listEvent();
-comIterator listVoids(uint8_t i) {
-  return &listEvent;
+//standard void
+comIterator standardVoids(uint8_t i) {
+  return &screenInputEvent;
 }
 void startStart();  //start voids
 comIterator startVoids(uint8_t i) {
@@ -91,7 +94,10 @@ comIterator pcVoid(uint8_t i) {
 }
 
 //Command char[][] arrays
-const char PROGMEM listChars[1][4] = { "LC\0\0" };
+const char PROGMEM editorChars[1][3] = { "ED\0" };
+const char PROGMEM shortDChars[1][3] = { "SD\0" };
+const char PROGMEM biosChars[1][3] = { "BS\0" };
+const char PROGMEM settingsChars[1][5] = { "LS\0\0\0" };  //CnX
 const char PROGMEM startChars[1][2] = { "AW" };
 const char PROGMEM scannerServoCharsD[1][3] = { "S\0\0" };
 const char PROGMEM demoChars[10][2] = { "Y-", "Y+", "Z-", "Z+", "R-", "R+", "D-", "D+", "GG", "GO" };
@@ -100,8 +106,17 @@ const char PROGMEM retCharsD[2][1] = { 'C', 'Y' };
 const char PROGMEM pcChars[1][1] = { "\0" };
 
 //Command sets(CS_size, command_length, &comIterator, char[][]_ptr)
-const CommandSet& listSet() {
-  return CommandSet(1, 4, &listVoids, &listChars[0][0]);
+const CommandSet& editorSet() {
+  return CommandSet(1, 3, &standardVoids, &editorChars[0][0]);
+}
+const CommandSet& shortDSet() {
+  return CommandSet(1, 3, &standardVoids, &shortDChars[0][0]);
+}
+const CommandSet& biosSet() {
+  return CommandSet(1, 3, &standardVoids, &biosChars[0][0]);
+}
+const CommandSet& settingsSet() {
+  return CommandSet(1, 5, &standardVoids, &settingsChars[0][0]);
 }
 const CommandSet& startSet() {
   return CommandSet(1, 2, &startVoids, &startChars[0][0]);

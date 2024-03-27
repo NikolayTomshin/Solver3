@@ -4,6 +4,12 @@ void setScreen(NextionScreen& ns) {
 char showDialogue(DialogueScreen* ds) {
   return ds->show(cm);
 }
+char Config::mysteryDialogueCall() {
+  return (showDialogue(new ShortDialogue(ShortDialogue::Type::Warning,
+                                         ShortDialogue::Options::YesNo,
+                                         F("Вы хотели ввести \"0\"?")))
+          == 'Y');
+}
 template<class T> T* activeState() {
   return (T*)RobotState::getActiveState();
 }

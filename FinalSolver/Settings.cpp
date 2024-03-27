@@ -2,6 +2,7 @@
 #include "EEPROM.h"
 #include <stdint.h>
 #include "Settings.h"
+#include "BitCoding.h"
 
 EEPROMptr::EEPROMptr(uint16_t value) {
   if (value > 4095) {
@@ -27,6 +28,71 @@ Config::Config(const Config& other) {
     this->name[i] = other.name[i];
   this->ptr = other.ptr;
   this->size = other.size;
+}
+
+
+bool Config::fromString(const String& valueString) const {
+  switch (type) {
+    case Type::String:
+      getReference<String>() = valueString;
+      return true;
+    case Type::Complicated:
+    case Type::Enum:
+    case Type::Binary: BitCoding::writeBinaryString(valueString, ptr, size); return true;
+    case Type::Bool:
+      bool res = valueString == F("true");
+      if ((valueString == F("false")) || res) {
+        getReference<bool>() = res;
+        return true;
+      }
+      return false;
+    case Type::Float:
+      switch (size) {
+        default: return setAttemptFloat<float>(valueString, &String::toFloat);
+        case 8: return setAttemptFloat<double>(valueString, &String::toDouble);
+      }
+    case Type::Int:
+      switch (size) {
+        default: return setAttempt<int8_t, long>(valueString, &String::toInt);
+        case 2: return setAttempt<int16_t, long>(valueString, &String::toInt);
+        case 4: return setAttempt<int32_t, long>(valueString, &String::toInt);
+      }
+    case Type::Uint:
+      switch (size) {
+        default: return setAttempt<uint8_t, long>(valueString, &String::toInt);
+        case 2: return setAttempt<uint16_t, long>(valueString, &String::toInt);
+        case 4: return setAttempt<uint32_t, long>(valueString, &String::toInt);
+      }
+  }
+}
+Config::Type Config::getType() const {
+  return type;
+}
+const String& Config::toString() const {
+  switch (type) {
+    case Type::String: return getReference<String>();
+    case Type::Binary: return BitCoding::binaryArrayString(ptr, size);
+    case Type::Bool: return boolStr(getReference<bool>());
+    case Type::Complicated: return String(F("can't show"));
+    case Type::Enum: return String();
+    case Type::Float:
+      switch (size) {
+        default: return String(getReference<float>());
+        case 8: return String(getReference<double>());
+      }
+    case Type::Int:
+      switch (size) {
+        default: return String(getReference<int8_t>());
+        case 2: return String(getReference<int16_t>());
+        case 4: return String(getReference<int32_t>());
+      }
+    case Type::Uint:
+      switch (size) {
+        default: return String(getReference<uint8_t>());
+        case 2: return String(getReference<uint16_t>());
+        case 4: return String(getReference<uint32_t>());
+      }
+  }
 }
 ConfigWithPtr::ConfigWithPtr(EEPROMptr ptr, const Config& worseConfig) {
   for (uint8_t i = 0; i < 6; i++)
@@ -72,15 +138,15 @@ ConfigurableObject::initialize(const IConfigurable* object, const String& name, 
   name.toCharArray(this->name, 6);
 }
 void ConfigurableObject::print() const {
-  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
     (*config).print();
 }
 void ConfigurableObject::saveAll() const {
-  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
     (*config).save();
 }
 void ConfigurableObject::loadAll() const {
-  for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
     (*config).load();
 }
 const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) const {
@@ -91,7 +157,7 @@ const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) co
   Serial.println(configName.length());
 #endif  //SETDebug
   if ((trackedSettings != NULL) && (configName.length() < 6))
-    for (ArrayIterator<ConfigWithPtr> config(trackedSettings); !config.isEnd(); config++)
+    for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
       if (!configName.compareTo(String((*config).name))) {
 #ifdef SETDebug
         Serial.println(F("Found"));
@@ -103,6 +169,12 @@ const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) co
   Serial.println(F("Not found"));
 #endif  //SETDebug
   return ConfigWithPtr();
+}
+const ConfigWithPtr& ConfigurableObject::getSetting(uint8_t i) const {
+  return (*trackedSettings)[i];
+}
+const uint8_t ConfigurableObject::getNumberOfSettings() const {
+  return trackedSettings->getSize();
 }
 
 void EEPROM_register::addObject(IConfigurable* object, const String& name) {
@@ -157,7 +229,7 @@ const ConfigurableObject& EEPROM_register::getConfObject(const String& objName) 
 
 const ConfigWithPtr& EEPROM_register::getSetting(const String& path) const {
   int separatorIndex = path.indexOf("/");
-  return getConfObject(path.substring(0, separatorIndex - 1)).getSetting(path.substring(separatorIndex + 1, path.length() - 1));
+  return getConfObject(path.substring(0, separatorIndex)).getSetting(path.substring(separatorIndex + 1));
 }
 
 void EEPROM_register::loadAllConfigs() const {

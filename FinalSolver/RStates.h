@@ -98,11 +98,91 @@ class CC : public NextionScreen {
   virtual const CommandSet& getCommandSet() const override;
 };
 
+
+#include "Settings.h"
+class SettingsScreen : public DialogueScreen, public ListScreen, public TitledScreen, public ExitableScreen {
+protected:
+  class SettingItem : public CollectionScreen::CollectionControl::Item {
+  protected:
+    const String& name;
+    Config* config;
+    bool withPtr;
+  public:
+    SettingItem(Config* config, bool withPtr, const String& name);
+    virtual void loadItem(const String& collectionNamePrefix, uint8_t index) override;
+    virtual void inputEvent(const char args[]) override;
+
+    void edit();
+  };
+  virtual const CommandSet& getCommandSet() const override;
+  SettingsScreen(){};
+public:
+  virtual void loadScreen() override;
+  SettingsScreen(const Array<SettingItem*>& settingItems, const String& title, uint8_t numberOfVisibleItems);
+  virtual void inputEvent() override;
+  virtual void onExit() override;
+};
+class EditorScreen : public DialogueScreen, public TitledScreen {
+protected:
+  const Config* config;
+  bool dirty = false;
+
+  String repString;
+
+  uint8_t cursorLimit;
+  uint8_t cursor = 0;
+
+  uint8_t flags;
+
+  bool getBinary() const;
+  bool getInt() const;
+  bool getUint() const;
+  //true when overtyping, false when actually inserting
+  bool getInsert() const;
+  bool getBool() const;
+  bool getLocked() const;
+
+  void setBinary(bool value);
+  void setInt(bool value);
+  void setUint(bool value);
+  void setInsert(bool value);
+  void setBool(bool value);
+  void setLocked(bool value);  
+  void setFlags(bool Binary,bool Int,bool Uint,bool Insert,bool Bool, bool Locked);
+  
+  void updateString() const;
+  
+  void moveCursor(bool right);
+  void enterChar(char c);
+  void eraseChar();
+  void negate();
+  void putPoint();
+  
+  void apply();
+  void cancel();
+  static const String& elName(uint8_t i);
+public:
+  virtual const CommandSet& getCommandSet() const override;
+  
+  ~EditorScreen();
+  EditorScreen(Config* config, const String& title);
+  virtual void loadScreen() override;
+  virtual void inputEvent() override;
+};
 class BiosInvite : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
+  virtual void inputEvent() override;
 };
 class Bios : public DialogueScreen {
   virtual void loadScreen() override;
   virtual const CommandSet& getCommandSet() const override;
+  virtual void inputEvent() override;
+
+  void showSettings();
+};
+
+class BiosSettings : public SettingsScreen {
+public:
+  BiosSettings();
 };

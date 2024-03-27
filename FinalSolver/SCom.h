@@ -21,7 +21,7 @@ protected:
   uint8_t size;
   uint8_t length;
 public:
-  static uint8_t args[2];  //buffer for command args
+  static uint8_t args[3];  //buffer for command args
 
   CommandSet(uint8_t size, uint8_t length, comIterator funcsArray, const char* masks);
   const char* getMaskPtr(uint8_t index) const;
@@ -101,21 +101,62 @@ void setVisibility(const String& objName, bool visible);
 
 class NextionScreen : public IUpdatable {
 protected:
-  class Element {  //Nextion responsive GUI element(or group)
+  class Inputable {
   public:
+    virtual void inputEvent(const char args[]) {}  //call input event with args*
+  };
+  class Element : public Inputable {  //Nextion responsive GUI element(or group)
+  public:
+    Element();
     const String& elementNamePrefix;
     Element(const String& elementNamePrefix) {
       this->elementNamePrefix = elementNamePrefix;
     }
-    virtual void load() = 0;                       //load element
-    virtual void inputEvent(const char args[]) {}  //call input event with args*
+    virtual void load() = 0;  //load element
   };
-  class TextField {
-    class Font {
-      float averagePixelsPerChar;
-    };
+  class TextField : public Element {
+  protected:
+    void loadMultiline();
+    void loadMultilineCentered();
   public:
-    uint8_t pixelWidth;
+    class Font {
+    protected:
+      uint8_t charWidthAverageDpx;
+      uint8_t bigLetterAdditionalPercents;
+      uint8_t heightPixels;
+    public:
+      Font(uint8_t heightPixels, const float& avgCharWidthPixels, const float& avgBigLetterScale) {
+        this->heightPixels = heightPixels;
+        charWidthAverageDpx = uint8_t(avgCharWidthPixels * 10);
+        bigLetterAdditionalPercents = uint8_t((avgBigLetterScale - 1) * 100);
+      }
+      static const Font& screenFonts(uint8_t fontID);         //font from Nextion by ID
+      static const Font& screenFontsSizeDesc(uint8_t index);  //font by size in descending order
+      static const uint8_t numberOfFonts();
+
+      uint8_t lengthOfLine(const uint16_t& pixels);  //how many characters fit in pixels
+    };
+
+    String currentText;
+    uint8_t fontID;
+    uint16_t widthInPixels;
+    enum class LoadMode : uint8_t {
+      Line,
+      Multiline,
+      MultilineCentered
+    } loadMode;
+
+    TextField()
+      : Element() {}
+    TextField(const String& textFieldNamePrefix, uint8_t fontID, uint16_t widthInPixels, LoadMode loadMode);
+    virtual void load() override;  //load element
+
+    const Font& getFont() const;
+
+    void setString(const String& string);
+    void loadString(const String& string);
+    void loadFit(const String& string);
+    void changeFont(uint8_t fontID);
   };
   static NextionScreen* currentScreen = NULL;
   bool isActive = false;
@@ -131,6 +172,7 @@ public:
   static void deactivateScreen(PortListener& port);
   virtual void loadScreen() = 0;
   virtual const CommandSet& getCommandSet() const = 0;
+
   virtual void inputEvent() {}
 };
 
@@ -176,34 +218,123 @@ protected:
       this->pageScreen = pageScreen;
     }
     virtual void setButtonEnabled(bool next, bool enabled);
+
     virtual bool goPage(uint8_t page);
     virtual bool nextPage();
     virtual bool prevPage();
 
     virtual void inputEvent(const char args[]) override;
+
+    uint8_t getCurrentPage() const;
+    uint8_t getNumberOfPages() const;  //all pages
   } * pageControl;
 public:
-  virtual bool nextPage() = 0;
-  virtual bool prevPage() = 0;
-  virtual void selectPage() = 0;
+  ~PageScreen();
+  virtual void onNextPage() = 0;
+  virtual void onPrevPage() = 0;
+  virtual void onSelectPage() = 0;
+};
+class TitledScreen : public NextionScreen {
+protected:
+  String title;
+  TitledScreen() {}
+public:
+  TitledScreen(const String& title);
+  void loadTitle() const;
+  void loadTitle(const String& title);
+};
+class ExitableScreen : public NextionScreen {
+protected:
+  bool exitAllowed = true;
+  //Update visibility of exit components
+  virtual void updateExitComponents() const;
+  virtual void onExit() = 0;
+public:
+  void setExitAllowed(bool allowed);
 };
 class CollectionScreen : public NextionScreen {  //screen with slots for items
 protected:
-  class CollectionControl : NextionScreen::Element {
-  protected:
-    class Item {
+  typedef void (*itemHider)(const String& collectionPrefix, uint8_t i);
+  static void hideElement(const String& collectionPrefix, uint8_t i);
+  class CollectionControl : public NextionScreen::Element {
+  public:
+    class Item : public NextionScreen::Inputable {
     public:
       virtual void loadItem(const String& collectionNamePrefix, uint8_t index) = 0;
     };
+  protected:
     PointerArray<Item> items;
     uint8_t startingItemIndex;
     uint8_t numberOfVisibleItems;
+    uint8_t upperLimitOfAccess() const;
 
-    virtual void hideItem(uint8_t index) = 0;
+    itemHider hideItem;  //void (uint) to hide item on screen
   public:
-    void loadItems() const;
+    CollectionControl(const String& collectionPrefix, uint8_t sizeOfCollection, uint8_t startingItemIndex, uint8_t numberOfVisibleItems, itemHider hideItem);
+
+    void loadFromIndex(uint8_t startingItemIndex);
+    void shiftLoadIndex(int8_t startingItemIndexShift);
+
+    virtual void load() override;
+    virtual void inputEvent(const char args[]) override;
+
+    uint8_t getNumberOfVisibleItems() const;
+    Item*& operator[](uint8_t i);
+
     void setItemVisible(uint8_t i, bool visible) const;
   } * collectionControl;
 public:
-  virtual void inputEvent() = 0;
+  ~CollectionScreen();
+};
+class ListScreen : public PageScreen, public CollectionScreen {
+protected:
+  //nill
+public:
+  virtual void onNextPage() override;
+  virtual void onPrevPage() override;
+  virtual void onSelectPage() override;
+};
+
+class ShortDialogue : public DialogueScreen, TitledScreen {
+protected:
+  char answers[3] = { '\0' };
+  const String& l;
+  const String& m;
+  const String& r;
+
+  const String& stringOf(uint8_t i) const;
+  static char letterOf(uint8_t i);
+
+  TextField* message = NULL;
+
+  void initialize(const String& message,
+                  char l, const String& messageL,
+                  char m, const String& messageM,
+                  char r, const String& messageR);
+public:
+  enum class Type : uint8_t {
+    Notice,
+    Warning,
+    Error
+  };
+  enum class Options : uint8_t {
+    Proceed,
+    YesNo,
+    YesNoCancel
+  };
+  ~ShortDialogue();
+  ShortDialogue(Type type, Options options, const String& message);
+  ShortDialogue(const String& title, const String& message,
+                char l, const String& messageL,
+                char m, const String& messageM,
+                char r, const String& messageR);
+
+  static ShortDialogue* notice(const String& message);
+  static ShortDialogue* yn(const String& message);
+  static ShortDialogue* ync(const String& message);
+  static ShortDialogue* err(const String& message);
+
+  virtual void loadScreen() override;
+  virtual const CommandSet& getCommandSet() const override;
+  virtual void inputEvent() override;
 };

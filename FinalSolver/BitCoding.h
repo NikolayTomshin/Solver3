@@ -11,6 +11,11 @@ Library for encoding multiple unsigned values in lesser number of bytes
 class BitCoding {
 public:
   virtual ~BitCoding() = 0;
+
+  static const String& binaryByteString(uint8_t value);
+  static const String& binaryArrayString(const uint8_t value[], uint8_t size);
+  static void writeBinaryString(const String& string, uint8_t valueArray[], uint8_t size);
+
   static uint8_t readBits(const uint8_t& valueByte, uint8_t bitIndex, uint8_t length);
   static bool readBit(const uint8_t& valueByte, uint8_t bitIndex);
   static void writeBits(uint8_t& valueByte, uint8_t value, uint8_t bitIndex, uint8_t length);

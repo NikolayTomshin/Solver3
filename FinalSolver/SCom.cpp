@@ -1,9 +1,12 @@
+#include "Arduino.h"
+#include <stdint.h>
+#include <math.h>
 #include "HardwareSerial.h"
 #include <avr/pgmspace.h>
 #include "SCom.h"
 
 
-uint8_t CommandSet::args[2] = { 0 };
+uint8_t CommandSet::args[3] = { 0 };
 CommandSet::CommandSet(uint8_t size, uint8_t length, const comIterator funcsArray, const char* masks) {
   this->size = size;
   this->length = length;
@@ -290,14 +293,15 @@ void loadSlider(uint8_t number, uint8_t value) {
   loadVal(name, value);
   click(name, false);
 }
-
+//Show or hide element on Nextion screen
 void setVisibility(const String& objName, bool visible) {
   callFunction(F("vis"), objName);
   addParametre(String(visible));
   comEnd();
 }
 
-//NextionScreen
+//Nextion
+
 NextionScreen* NextionScreen::currentScreen;
 
 NextionScreen* NextionScreen::getActiveScreen() {
@@ -361,6 +365,9 @@ void DialogueScreen::endDialogue(char arg) {
 
 //PageScreen::
 //PageScreen::PageControl::
+PageScreen::~PageScreen() {
+  delete pageControl;
+}
 void PageScreen::PageControl::load() {
   setVisibility(elementNamePrefix + F("L"), showLButton);
   setVisibility(elementNamePrefix + F("R"), showRButton);
@@ -385,8 +392,7 @@ void PageScreen::PageControl::setButtonEnabled(bool next, bool enabled) {
     showRButton = enabled;
   else
     showLButton = enabled;
-  String bName = elementNamePrefix + (next ? F("R") : F("L"));
-  setVisibility(bName, enabled);
+  setVisibility(elementNamePrefix + (next ? F("R") : F("L")), enabled);
 }
 bool PageScreen::PageControl::goPage(uint8_t page) {
   if ((page < 1) || (page > numberOfPages)) return false;
@@ -405,31 +411,95 @@ void PageScreen::PageControl::inputEvent(const char args[]) {
   switch (args[0]) {
     case 'P':
       prevPage();
-      pageScreen->prevPage();
+      pageScreen->onPrevPage();
       return;
     case 'N':
       nextPage();
-      pageScreen->nextPage();
+      pageScreen->onNextPage();
       return;
     case 'S':
-      pageScreen->selectPage();
+      pageScreen->onSelectPage();
       return;
     default:;
   }
 }
-void CollectionScreen::CollectionControl::loadItems() const {
-  uint8_t i = 0;
+uint8_t PageScreen::PageControl::getCurrentPage() const {
+  return currentPage;
+}
+uint8_t PageScreen::PageControl::getNumberOfPages() const {
+  return numberOfPages;
+}
+
+TitledScreen::TitledScreen(const String& title) {
+  this->title = title;
+}
+void TitledScreen::loadTitle() const {
+  loadTxt(F("ttl"), title);
+}
+void TitledScreen::loadTitle(const String& title) {
+  this->title = title;
+  loadTitle();
+}
+
+void ExitableScreen::updateExitComponents() const {
+  setVisibility(F("ext"), exitAllowed);
+}
+void ExitableScreen::setExitAllowed(bool allowed) {
+  exitAllowed = allowed;
+  updateExitComponents();
+}
+
+CollectionScreen::~CollectionScreen() {
+  delete collectionControl;
+}
+CollectionScreen::CollectionControl::
+  CollectionControl(const String& collectionPrefix, uint8_t sizeOfCollection,
+                    uint8_t startingItemIndex, uint8_t numberOfVisibleItems, itemHider hideItem)
+  : NextionScreen::Element::Element(collectionPrefix) {
+  this->hideItem = hideItem;
+  this->startingItemIndex = startingItemIndex;
+  this->numberOfVisibleItems = numberOfVisibleItems;
+  items = PointerArray<Item>(sizeOfCollection);
+}
+CollectionScreen::CollectionControl::Item*& CollectionScreen::CollectionControl::operator[](uint8_t i) {  //access items
+  return items[i];
+}
+uint8_t CollectionScreen::CollectionControl::getNumberOfVisibleItems() const {
+  return numberOfVisibleItems;
+}
+void CollectionScreen::CollectionControl::loadFromIndex(uint8_t startingItemIndex) {
+  this->startingItemIndex = startingItemIndex;
+  load();
+}
+void CollectionScreen::CollectionControl::shiftLoadIndex(int8_t startingItemIndexShift) {
+  startingItemIndex += startingItemIndexShift;
+  load();
+}
+void CollectionScreen::CollectionControl::load() {
   uint8_t collectionIndex = startingItemIndex;
   //limitIndex = collectionIndex + min(numberOfVisibleItems, restOfItemsInCollection)
   uint8_t limitIndex = collectionIndex + minMax<uint8_t>(numberOfVisibleItems, items.getSize() - collectionIndex, false);
-  if (collectionIndex < items.getSize())  //in this case items.getSize() - collectionIndex would result in overflow
+  uint8_t i = 0;
+  if (collectionIndex < items.getSize())  //protection from too large startingItemIndex
     while (collectionIndex < limitIndex) {
       items[collectionIndex]->loadItem(elementNamePrefix, i);
-      ++i;
       ++collectionIndex;
+      ++i;
     }
   for (; i < numberOfVisibleItems; ++i)
-    hideItem(i);
+    (*hideItem)(elementNamePrefix, i);
+}
+uint8_t CollectionScreen::CollectionControl::upperLimitOfAccess() const {
+  const uint8_t& s = items.getSize();
+  return (startingItemIndex < s) ? limits<uint8_t>(numberOfVisibleItems, s - startingItemIndex, true) : 0;
+}
+void CollectionScreen::CollectionControl::inputEvent(const char args[]) {
+  const uint8_t& i = *args;
+  if (i < upperLimitOfAccess())
+    items[i + startingItemIndex]->inputEvent(&args[1]);
+}
+void CollectionScreen::hideElement(const String& collectionPrefix, uint8_t i) {
+  setVisibility(letterIndex(collectionPrefix, i), false);
 }
 void CollectionScreen::CollectionControl::setItemVisible(uint8_t i, bool visible) const {
   if (i >= numberOfVisibleItems) return;
@@ -440,5 +510,205 @@ void CollectionScreen::CollectionControl::setItemVisible(uint8_t i, bool visible
       return;
     }
   }
-  hideItem(i);
+  (*hideItem)(elementNamePrefix, i);
+}
+
+uint8_t NextionScreen::TextField::Font::lengthOfLine(const uint16_t& pixels) {
+  return uint8_t(pixels / (charWidthAverageDpx * 10.0));
+}
+void NextionScreen::TextField::setString(const String& string) {
+  currentText = string;
+}
+NextionScreen::TextField::TextField(const String& textFieldNamePrefix, uint8_t fontID, uint16_t widthInPixels,
+                                    NextionScreen::TextField::LoadMode loadMode)
+  : Element(textFieldNamePrefix) {
+  this->fontID = fontID;
+  this->widthInPixels = widthInPixels;
+  this->loadMode = loadMode;
+}
+void NextionScreen::TextField::load() {
+  switch (loadMode) {
+    case LoadMode::Line: return loadTxt(elementNamePrefix, currentText);
+    case LoadMode::Multiline: return loadMultiline();
+    case LoadMode::MultilineCentered: return loadMultilineCentered();
+    default: return;
+  }
+}
+void NextionScreen::TextField::loadString(const String& string) {
+  currentText = string;
+  load();
+}
+void NextionScreen::TextField::loadFit(const String& string) {
+  const uint16_t& length = string.length();
+  for (uint8_t i = 0; i < Font::numberOfFonts(); i++)
+    if (Font::screenFontsSizeDesc(i).lengthOfLine(widthInPixels) >= length) {
+      fontID = i;
+      break;
+    }
+  loadString(string);
+}
+const NextionScreen::TextField::Font& NextionScreen::TextField::getFont() const {
+  return Font::screenFonts(fontID);
+}
+void NextionScreen::TextField::loadMultiline() {
+  comEnd();
+  Serial1.print(elementNamePrefix);
+  Serial1.print(F(".txt=\""));
+  const uint8_t lineSize = getFont().lengthOfLine(widthInPixels);
+
+  for (uint16_t lineCursor = 0; lineCursor < currentText.length();) {  //while line cursor not reached the end
+    lineCursor = indexOfSkipping(currentText, lineCursor, F(" "));     //jump over empty spaces
+    uint16_t lineLimit = endOfTheLine(currentText, lineSize, lineCursor, F(" "));
+
+    for (; lineCursor < lineLimit; ++lineCursor)  //print chars of line
+      Serial1.write(currentText[lineCursor]);
+    Serial1.print(F("\r\n"));  //print new line
+  }                            //all chars of line are sent
+  Serial1.write('"');
+  comEnd();  //end command
+}
+void NextionScreen::TextField::loadMultilineCentered() {
+  comEnd();
+  Serial1.print(elementNamePrefix);
+  Serial1.print(F(".txt=\""));
+  const uint8_t lineSize = getFont().lengthOfLine(widthInPixels);
+
+  uint8_t maxLineLength = 0;
+  for (uint16_t lineCursor = 0; lineCursor < currentText.length();) {
+    lineCursor = indexOfSkipping(currentText, lineCursor, F(" "));  //jump over empty spaces
+    uint16_t lineLimit = endOfTheLine(currentText, lineSize, lineCursor, F(" "));
+    uint8_t lineLength = uint8_t(lineLimit - lineCursor + 1);
+
+    if (lineLength > maxLineLength) maxLineLength = lineLength;
+    lineCursor = lineLimit;
+  }                                                   //find longest line
+  const uint8_t& centeredLineLength = maxLineLength;  //maxLineLength=width of centered paragraph
+
+  for (uint16_t lineCursor = 0; lineCursor < currentText.length();) {
+    lineCursor = indexOfSkipping(currentText, lineCursor, F(" "));  //jump over empty spaces
+    uint16_t lineLimit = endOfTheLine(currentText, lineSize, lineCursor, F(" "));
+    uint8_t lineLength = uint8_t(lineLimit - lineCursor + 1);
+
+    uint8_t indent = (centeredLineLength - lineLength) / 2;
+    for (uint8_t i = 0; i < indent; ++i)  //print indent
+      Serial1.write(' ');
+    for (; lineCursor < lineLimit; ++lineCursor)  //print chars of line
+      Serial1.write(currentText[lineCursor]);
+    Serial1.print(F("\r\n"));  //print new line
+  }
+
+  Serial1.write('"');
+  comEnd();  //end command
+}
+void ListScreen::onNextPage() {
+  collectionControl->shiftLoadIndex(collectionControl->getNumberOfVisibleItems());
+}
+void ListScreen::onPrevPage() {
+  collectionControl->shiftLoadIndex(-collectionControl->getNumberOfVisibleItems());
+}
+void ListScreen::onSelectPage() {
+  collectionControl->loadFromIndex(collectionControl->getNumberOfVisibleItems() * (pageControl->getCurrentPage() - 1));
+}
+
+ShortDialogue::~ShortDialogue() {
+  delete message;
+}
+
+ShortDialogue::ShortDialogue(Type type, Options options, const String& message)
+  : TitledScreen(title) {
+  String title;
+  switch (type) {
+    case Type::Notice: title = F("Оповещение"); break;
+    default: title = F("Внимание"); break;
+    case Type::Error: title = F("Ошибка"); break;
+  }
+  char l = '\0';
+  char m = '\0';
+  char r = '\0';
+  String messageL = F("");
+  String messageM = F("");
+  String messageR = F("");
+  switch (options) {
+    default:
+      m = 'O';
+      messageM = F("Ок");
+      break;
+    case Options::YesNoCancel:
+      m = 'C';
+      messageM = F("Отмена");
+    case Options::YesNo:
+      l = 'Y';
+      messageM = F("Да");
+      r = 'N';
+      messageM = F("Нет");
+      break;
+  }
+  initialize(message, l, messageL, m, messageM, r, messageR);
+}
+
+ShortDialogue::ShortDialogue(const String& title, const String& messageString,
+                             char l, const String& messageL,
+                             char m, const String& messageM,
+                             char r, const String& messageR)
+  : TitledScreen(title) {
+  initialize(messageString, l, messageL, m, messageM, r, messageR);
+}
+void ShortDialogue::initialize(const String& messageString,
+                               char l, const String& messageL,
+                               char m, const String& messageM,
+                               char r, const String& messageR) {
+  this->message = new TextField(F("t0"), 0, 320, TextField::LoadMode::Multiline);
+  this->message->setString(messageString);
+
+  this->l = messageL;
+  this->m = messageM;
+  this->r = messageR;
+  answers[0] = l;
+  answers[1] = m;
+  answers[2] = r;
+}
+void ShortDialogue::loadScreen() {
+  goNextionPage(F("Short"));
+  loadTitle();
+  message->load();
+  for (uint8_t i = 0; i < 3; ++i) {
+    if (answers[i] == '\0') setVisibility(String(letterOf(i)), false);
+    else loadTxt(String(letterOf(i)), stringOf(i));
+  }
+}
+const String& ShortDialogue::stringOf(uint8_t i) const {
+  switch (i) {
+    case 0: return l;
+    case 1: return m;
+    default: return r;
+  }
+}
+char ShortDialogue::letterOf(uint8_t i) {
+  switch (i) {
+    case 0: return 'L';
+    case 1: return 'M';
+    default: return 'R';
+  }
+}
+void ShortDialogue::inputEvent() {
+  char answer = CommandSet::args[0];
+  switch (answer) {
+    case 'Y':
+    case 'C':
+    case 'N':
+      endDialogue(answer);
+    default:;
+  }
+}
+ShortDialogue* ShortDialogue::notice(const String& message) {
+  return new ShortDialogue(Type::Notice, Options::Proceed, message);
+}
+ShortDialogue* ShortDialogue::yn(const String& message) {
+  return new ShortDialogue(Type::Warning, Options::YesNo, message);
+}
+ShortDialogue* ShortDialogue::ync(const String& message) {
+  return new ShortDialogue(Type::Warning, Options::YesNoCancel, message);
+}
+ShortDialogue* ShortDialogue::err(const String& message) {
+  return new ShortDialogue(Type::Error, Options::Proceed, message);
 }

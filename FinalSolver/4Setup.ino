@@ -69,11 +69,12 @@ void setup() {
   cm2.setCommandSet(startSet());  //set screen awakening detection
 
   reg.getConfObject(F("start")).loadAll();  //load startup settings
-  if (startup.showBiosAtBeggining())        //BIOS
-    if (startup.openBiosAutomatically())
-      showDialogue(new Bios);
-    else
-      showDialogue(new BiosInvite);
+  //Bios stage
+  if (!startup.showBiosAtBeggining()) goto skipBios;
+  if (!startup.openBiosAutomatically())                //If open bios not automatically, ask
+    if (!showDialogue(new BiosInvite)) goto skipBios;  //if timeout skip
+  showDialogue(new Bios);
+skipBios:
   //end of bios stage, next loading configs
   if (startup.loadAllSettings()) reg.loadAllConfigs();
 

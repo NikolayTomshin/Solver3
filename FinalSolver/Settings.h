@@ -25,6 +25,7 @@ public:
 };
 
 class Config {  //instance of savable parameter contains ptr, size and SHORT NAME
+static char mysteryDialogueCall();
 public:
   enum class Type : uint8_t {
     Bool,
@@ -38,6 +39,20 @@ public:
   };
 protected:
   Type type;
+
+  template<class T, class T1> bool setAttempt(const String& valueString, T1 (String::*conversion)() const) const {
+    T result = T((valueString.*conversion)());
+    if (!(String(result).compareTo(valueString))) {
+      getReference<T>() = result;
+      return true;
+    }
+    return false;
+  }
+  template<class T> bool setAttemptFloat(const String& valueString, T (String::*conversion)() const) const {
+    T result = (valueString.*conversion)();
+    if (result != 0) return true;
+    return mysteryDialogueCall();
+  }
 public:
   Type getType() const;
   void* ptr = NULL;  //pointer to config
@@ -47,6 +62,8 @@ public:
   Config(void* ptr, size_t size, const String& name, Config::Type type);
   Config(const Config& other);
 
+  bool fromString(const String& valueString) const;
+  const String& toString() const;
   template<class T> T& getReference() const;
 };
 
@@ -76,6 +93,8 @@ public:
   void loadAll() const;
 
   const ConfigWithPtr& getSetting(const String& configName) const;  //exact name
+  const ConfigWithPtr& getSetting(uint8_t i) const;
+  const uint8_t getNumberOfSettings() const;
 
   friend class EEPROM_register;
 };
