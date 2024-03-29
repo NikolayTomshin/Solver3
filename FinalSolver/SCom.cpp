@@ -404,22 +404,28 @@ void DialogueScreen::endDialogue(char arg) {
 PageScreen::~PageScreen() {
   delete pageControl;
 }
+void PageScreen::PageControl::print() const{
+  Serial.print(currentPage);
+  Serial.print(F("/"));
+  Serial.print(numberOfPages);
+  Serial.println(F(" страница"));
+}
 void PageScreen::PageControl::load() {
 #ifdef SCOMdebug
-  Serial.println(F("PageControl::load() ex"));
+  Serial.println("PageControl::load() ex");
   delay(50);
 #endif
-  setVisibility(elementNamePrefix + F("L"), showLButton);
-  setVisibility(elementNamePrefix + F("R"), showRButton);
+  setVisibility(elementNamePrefix + "L", showLButton);
+  setVisibility(elementNamePrefix + "R", showRButton);
 #ifdef SCOMdebug
-  Serial.println(F("PC set button vis"));
+  Serial.println("PC set button vis");
   delay(10);
 #endif
-  loadTxt(elementNamePrefix + F("S"),
+  loadTxt(elementNamePrefix + "S",
           showText ? pageFormatBefore + String(currentPage) + pageFormatSeparator + String(numberOfPages) + pageFormatAfter
-                   : String(F("")));
+                   : String(""));
 #ifdef SCOMdebug
-  Serial.println(F("PC loaded TXT"));
+  Serial.println("PC loaded TXT");
   delay(10);
 #endif
 }

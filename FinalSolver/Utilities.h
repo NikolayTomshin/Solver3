@@ -85,7 +85,7 @@ private:
 
 class ICollection {
 public:
-  virtual uint8_t getSize() const = 0;  
+  virtual uint8_t getSize() const = 0;
 };
 
 template<class T> class StackIterator;  //forward declaration
@@ -115,7 +115,9 @@ public:
   virtual T& peek() const;
   virtual T& peek(uint8_t deeper) const;
   virtual T pop();
-  virtual void push(T value);
+  virtual void popV();
+  virtual void push(const T& value);
+  virtual void pushBack(const T& value);
   uint8_t getSize() const override;
   void reverse();
   friend class StackIterator<T>;
@@ -273,17 +275,35 @@ template<class T> T Stack<T>::pop() {
   if (size) {
     StackNode* temp = head;
     head = head->prev;
-    size--;
+    --size;
     if (!size) tail = NULL;
     return temp->pop();
   }
   poutN(F("Stack is empty can't pop"));
 }
-template<class T> void Stack<T>::push(T value) {
+template<class T> void Stack<T>::popV() {
+  if (!size) {
+    poutN(F("Stack is empty can't pop"));
+    return;
+  }
+  StackNode* temp = head;
+  head = head->prev;
+  --size;
+  if (!size) tail = NULL;
+  delete temp;
+}
+template<class T> void Stack<T>::push(const T& value) {
   if (size < 255) {
     head = new StackNode(head, value);
     if (!size) tail = head;
     size++;
+  } else poutN(F("Stack is full 255 can't push"));
+}
+template<class T> void Stack<T>::pushBack(const T& value) {
+  if (!size) return push(value);
+  if (size < 255) {
+    tail = (tail->prev = new StackNode(tail, value));
+    ++size;
   } else poutN(F("Stack is full 255 can't push"));
 }
 template<class T> uint8_t Stack<T>::getSize() const {

@@ -374,8 +374,10 @@ void SettingsScreen::loadScreen() {
   delay(10);
   if (pageControl == NULL)
     Serial.print(F("НЕТ пэшконтрола"));
-  else
+  else {
     Serial.print(F("Page control !=NUll"));
+    pageControl->print();
+  }
   delay(10);
 #endif
   pageControl->load();
@@ -398,7 +400,7 @@ SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const St
   Serial.print(F(" settings\n\rVisible items "));
   Serial.println(numberOfVisibleItems);
 #endif  //SETDebug
-  pageControl = new PageControl(PageControl::simplePC(F("pc"), size / numberOfVisibleItems + bool(size % numberOfVisibleItems), 0));
+  pageControl = new PageControl(PageControl::simplePC(F("pc"), size / numberOfVisibleItems + bool(size % numberOfVisibleItems), 1));
 #ifdef SETDebug
   Serial.println(F("Page control+"));
   delay(10);

@@ -210,6 +210,7 @@ protected:
     PageScreen* pageScreen;
   public:
     bool showText = true;
+    void print() const;
     virtual void load() override;
 
     PageControl(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage,
