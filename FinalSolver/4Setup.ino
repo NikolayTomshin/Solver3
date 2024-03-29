@@ -1,6 +1,6 @@
 //setup and loop funcs
 
-//#define SaveAllSettings //run once and set all configs with program values
+
 
 //startup configs===================================================================================================================
 class StartUpSettings : public IConfigurable {
@@ -50,37 +50,46 @@ public:
   void setLoadAllSettings(bool value) {
     BitCoding::writeBit(flags, value, 2);
   }
+  //showBiosAtBeggining, openBiosAutomatically,  loadAllSettings, firstActiveScreen
 } startup(true, true, false, StartUpSettings::FirstActiveScreen::MainMenu);  //startup settings
 
 //SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP
+//#define SaveAllSettings //run once and set all configs with program values
+#define PCDEBUG
 void setup() {
+  Serial.begin(PCBAUD);  //begin pc port
+#ifdef PCDEBUG
+  while (!Serial)
+    ;
+#endif
+  Serial.println(F("Start"));
+  pcm.setCommandSet(pcSet());  //set pc commandSet
+
   reg.addObject(&startup, F("start"));  //add configurable objects to register
   reg.addObject(&rm.right, F("right"));
   reg.addObject(&rm.left, F("left"));
   reg.addObject(&rm, F("rm"));
 
-  Serial.begin(PCBAUD);        //begin pc port
-  pcm.setCommandSet(pcSet());  //set pc commandSet
-  pcm.printComs();             //this line doesn't get printed usually
-  Serial.println(F("Start"));
 
 #ifndef SaveAllSettings           //in SAS build don't initialize NX port and interface
   Serial1.begin(NXBAUD);          //begin nx port
   cm2.setCommandSet(startSet());  //set screen awakening detection
 
-  reg.getConfObject(F("start")).loadAll();  //load startup settings
+  //reg.getConfObject(F("start")).loadAll();  //load startup settings
   //Bios stage
   if (!startup.showBiosAtBeggining()) goto skipBios;
   if (!startup.openBiosAutomatically())                //If open bios not automatically, ask
     if (!showDialogue(new BiosInvite)) goto skipBios;  //if timeout skip
   showDialogue(new Bios);
 skipBios:
+  Serial.print(F("Bios skipped"));
   //end of bios stage, next loading configs
   if (startup.loadAllSettings()) reg.loadAllConfigs();
 
   rm.initializeSettings();
 #else
   reg.saveAllConfigs();
+  Serial.print(F("saving complete"));
 #endif  //!SaveAllSettings
 #ifndef SaveAllSettings
   rm.initializeHardware();

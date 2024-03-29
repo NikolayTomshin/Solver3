@@ -106,33 +106,33 @@ const char PROGMEM retCharsD[2][1] = { 'C', 'Y' };
 const char PROGMEM pcChars[1][1] = { "\0" };
 
 //Command sets(CS_size, command_length, &comIterator, char[][]_ptr)
-const CommandSet& editorSet() {
+const CommandSet editorSet() {
   return CommandSet(1, 3, &standardVoids, &editorChars[0][0]);
 }
-const CommandSet& shortDSet() {
+const CommandSet shortDSet() {
   return CommandSet(1, 3, &standardVoids, &shortDChars[0][0]);
 }
-const CommandSet& biosSet() {
+const CommandSet biosSet() {
   return CommandSet(1, 3, &standardVoids, &biosChars[0][0]);
 }
-const CommandSet& settingsSet() {
+const CommandSet settingsSet() {
   return CommandSet(1, 5, &standardVoids, &settingsChars[0][0]);
 }
-const CommandSet& startSet() {
+const CommandSet startSet() {
   return CommandSet(1, 2, &startVoids, &startChars[0][0]);
 }
-const CommandSet& scannerServoSetD() {
+const CommandSet scannerServoSetD() {
   return CommandSet(1, 3, &scannerServoVoidsD, &scannerServoCharsD[0][0]);
 }
-const CommandSet& demoSet() {
+const CommandSet demoSet() {
   return CommandSet(10, 2, &demoVoids, &demoChars[0][0]);
 }
-const CommandSet& begSet() {
+const CommandSet begSet() {
   return CommandSet(1, 2, &begVoidsD, &begCharsD[0][0]);
 }
-const CommandSet& retSet() {
+const CommandSet retSet() {
   return CommandSet(2, 1, &retVoidsD, &retCharsD[0][0]);
 }
-const CommandSet& pcSet() {
+const CommandSet pcSet() {
   return CommandSet(1, 1, &pcVoid, &pcChars[0][0]);
 }

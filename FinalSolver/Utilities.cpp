@@ -8,7 +8,7 @@ bool& f(bool& other) {
   other = !other;
   return other;
 }
-const String& boolStr(bool value) {
+String boolStr(bool value) {
   return value ? F("true") : F("false");
 }
 bool fromString(const String& boolString) {

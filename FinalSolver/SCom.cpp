@@ -28,11 +28,27 @@ uint8_t CommandSet::getLength() const {
 comIterator CommandSet::getFuncs() const {
   return funcs;
 }
-
+void CommandSet::printComs() const {
+  Serial.write('{');
+  for (uint8_t i = 0; i < size; ++i) {      //foreach command in set
+                                            //check if letters in buffer are valid as command
+    const char* cPtr = getMaskPtr(i);       //get pointer to first char of mask
+    for (uint8_t j = 0; j < length; j++) {  //foreach character of buffer
+      //compare with mask char
+      char theChar = pgm_read_byte_near(cPtr + j);
+      if (theChar == '\0') Serial.print(F("\\0"));
+      else
+        Serial.write(theChar);  //get mask char
+    }
+    Serial.write(' ');
+  }
+  Serial.write('}');
+}
 void ComBuffer::initialize(uint8_t comSize) {
 #ifdef SCOMdebug
   Serial.print(F("new command length "));
   Serial.println(comSize);
+  delay(10);
 #endif
   if (buffer != NULL)
     delete[] buffer;
@@ -106,7 +122,7 @@ void CommandListener::checkBuffer() {
 #ifdef SCOMdebug
       Serial.print("=");
       for (uint8_t k = 0; k < length; k++)
-        Serial.write(pgm_read_byte_near(cPtr + k));
+        Serial.write(buffer[k]);
       Serial.print(F("->commiting "));
       Serial.println(i);
       delay(100);
@@ -133,17 +149,20 @@ void CommandListener::checkBuffer() {
   buffer.flush();  //flush buffer
 }
 void CommandListener::setCommandSet(const CommandSet& commandSet) {
-  this->commandSet = &commandSet;
+  if (this->commandSet != NULL) delete this->commandSet;
+  this->commandSet = new CommandSet(commandSet);
   this->actions = commandSet.getFuncs();
 #ifdef SCOMdebug
   Serial.println(F("new commandSet"));
+  commandSet.printComs();
 #endif
   buffer.initialize(commandSet.getLength());
 }
 void CommandListener::printComs() const {
-  Serial.print(F("printing size="));
+  Serial.print(F("ComSet size="));
   Serial.print(commandSet->size);
   Serial.print(F(" length="));
+  Serial.println(commandSet->length);
   Serial.println(commandSet->length);
   for (uint8_t i = 0; i < commandSet->size; i++) {
     Serial.print(i);
@@ -166,7 +185,9 @@ void CommandListener::cascadeFlush() {
     temp = temp->dumpListener;
   }
 }
-
+CommandListener::~CommandListener() {
+  if (commandSet != NULL) delete commandSet;
+}
 void emptyPort(HardwareSerial& port) {
   while (port.available())
     port.read();
@@ -284,7 +305,7 @@ void goNextionPage(const String& pagename) {
   comEnd();
 }
 
-const String& letterIndex(const String& letter, uint8_t index) {
+String letterIndex(const String& letter, uint8_t index) {
   return (letter + String(index));
 }
 
@@ -295,6 +316,12 @@ void loadSlider(uint8_t number, uint8_t value) {
 }
 //Show or hide element on Nextion screen
 void setVisibility(const String& objName, bool visible) {
+#ifdef SCOMdebug
+  Serial.print(objName);
+  Serial.print(F(" VIS "));
+  Serial.println(visible);
+  delay(10);
+#endif
   callFunction(F("vis"), objName);
   addParametre(String(visible));
   comEnd();
@@ -312,6 +339,10 @@ void NextionScreen::setActive(PortListener& port) {
   currentScreen = this;
   isActive = true;
   port.setCommandSet(getCommandSet());
+#ifdef SCOMdebug
+  Serial.println(F("SUCC"));
+  delay(10);
+#endif;
   loadScreen();
 }
 void NextionScreen::deactivateScreen(PortListener& port) {
@@ -333,12 +364,17 @@ bool DialogueScreen::ready() const {
   return _ready;
 }
 char DialogueScreen::show(PortListener& port) {
+#ifdef DIALOGUEdebug
+  Serial.println(F("New dialogue"));
+  delay(10);
+#endif
   bool firstDialogue = screenStack.getSize() == 0;
   if (firstDialogue) fallBackScreen = getActiveScreen();
   screenStack.push(this);
   setActive(port);
 #ifdef DIALOGUEdebug
-  Serial.println(F("New dialogue"));
+  Serial.println(F("nd active"));
+  delay(10);
 #endif
   waitReady();
   delete screenStack.pop();
@@ -369,11 +405,23 @@ PageScreen::~PageScreen() {
   delete pageControl;
 }
 void PageScreen::PageControl::load() {
+#ifdef SCOMdebug
+  Serial.println(F("PageControl::load() ex"));
+  delay(50);
+#endif
   setVisibility(elementNamePrefix + F("L"), showLButton);
   setVisibility(elementNamePrefix + F("R"), showRButton);
-  loadTxt(elementNamePrefix,
+#ifdef SCOMdebug
+  Serial.println(F("PC set button vis"));
+  delay(10);
+#endif
+  loadTxt(elementNamePrefix + F("S"),
           showText ? pageFormatBefore + String(currentPage) + pageFormatSeparator + String(numberOfPages) + pageFormatAfter
                    : String(F("")));
+#ifdef SCOMdebug
+  Serial.println(F("PC loaded TXT"));
+  delay(10);
+#endif
 }
 PageScreen::PageControl PageScreen::PageControl::simplePC(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage) {
   return PageControl(elementNamePrefix, numberOfPages, startingPage, F("Стр. "), F("/"), F(""));

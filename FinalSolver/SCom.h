@@ -5,8 +5,8 @@
 #include "Utilities.h"
 #include "HardW.h"
 
-//#define SCOMdebug
-//#define DIALOGUEdebug
+#define SCOMdebug
+#define DIALOGUEdebug
 
 #define PCBAUD 115200
 #define NXBAUD 9600
@@ -23,12 +23,15 @@ protected:
 public:
   static uint8_t args[3];  //buffer for command args
 
+  CommandSet() {}
   CommandSet(uint8_t size, uint8_t length, comIterator funcsArray, const char* masks);
   const char* getMaskPtr(uint8_t index) const;
   char getChar(uint8_t comIndex, uint8_t charIndex) const;
   uint8_t getSize() const;
   uint8_t getLength() const;
   comIterator getFuncs() const;
+
+  void printComs() const;
 
   friend class CommandListener;
 };
@@ -60,6 +63,7 @@ protected:
 
   CommandListener(SecondaryListener* dumpListener = NULL);
 public:
+  ~CommandListener();
   void checkBuffer();
   void setCommandSet(const CommandSet& commandSet);
   void printComs() const;
@@ -95,7 +99,7 @@ void callFunction(const String& name, const String& par0 = "");  //{name} {pars}
 void addParametre(const String& par);
 void click(const String& name, bool press);  //click {name},[press/release]
 void goNextionPage(const String& pagename);
-const String& letterIndex(const String& letter, uint8_t index);
+String letterIndex(const String& letter, uint8_t index);
 void loadSlider(uint8_t number, uint8_t value);
 void setVisibility(const String& objName, bool visible);
 
@@ -108,7 +112,7 @@ protected:
   class Element : public Inputable {  //Nextion responsive GUI element(or group)
   public:
     Element();
-    const String& elementNamePrefix;
+    String elementNamePrefix;
     Element(const String& elementNamePrefix) {
       this->elementNamePrefix = elementNamePrefix;
     }
@@ -171,7 +175,7 @@ public:
   virtual void update() override {}
   static void deactivateScreen(PortListener& port);
   virtual void loadScreen() = 0;
-  virtual const CommandSet& getCommandSet() const = 0;
+  virtual const CommandSet getCommandSet() const = 0;
 
   virtual void inputEvent() {}
 };
@@ -298,9 +302,9 @@ public:
 class ShortDialogue : public DialogueScreen, TitledScreen {
 protected:
   char answers[3] = { '\0' };
-  const String& l;
-  const String& m;
-  const String& r;
+  const String l;
+  const String m;
+  const String r;
 
   const String& stringOf(uint8_t i) const;
   static char letterOf(uint8_t i);
@@ -335,6 +339,6 @@ public:
   static ShortDialogue* err(const String& message);
 
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
   virtual void inputEvent() override;
 };

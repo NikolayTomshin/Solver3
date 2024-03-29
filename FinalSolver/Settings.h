@@ -63,7 +63,7 @@ public:
   Config(const Config& other);
 
   bool fromString(const String& valueString) const;
-  const String& toString() const;
+  String toString() const;
   template<class T> T& getReference() const;
 };
 
@@ -94,7 +94,7 @@ public:
 
   const ConfigWithPtr& getSetting(const String& configName) const;  //exact name
   const ConfigWithPtr& getSetting(uint8_t i) const;
-  const uint8_t getNumberOfSettings() const;
+  uint8_t getNumberOfSettings() const;
 
   friend class EEPROM_register;
 };

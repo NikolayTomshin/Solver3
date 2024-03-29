@@ -68,7 +68,7 @@ bool Config::fromString(const String& valueString) const {
 Config::Type Config::getType() const {
   return type;
 }
-const String& Config::toString() const {
+String Config::toString() const {
   switch (type) {
     case Type::String: return getReference<String>();
     case Type::Binary: return BitCoding::binaryArrayString(ptr, size);
@@ -171,9 +171,17 @@ const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) co
   return ConfigWithPtr();
 }
 const ConfigWithPtr& ConfigurableObject::getSetting(uint8_t i) const {
+  i %= trackedSettings->getSize();
+#ifdef SETDebug
+  Serial.print(F("Get settting "));
+  Serial.print(i);
+  Serial.println();
+  delay(10);
+#endif  //SETDebug
   return (*trackedSettings)[i];
 }
-const uint8_t ConfigurableObject::getNumberOfSettings() const {
+uint8_t ConfigurableObject::getNumberOfSettings() const {
+  if (trackedSettings == NULL) return 0;
   return trackedSettings->getSize();
 }
 

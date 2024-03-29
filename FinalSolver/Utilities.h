@@ -8,7 +8,7 @@
 void spn();
 
 bool& f(bool& other);
-const String& boolStr(bool value);
+String boolStr(bool value);
 bool fromString(const String& boolString);
 
 int8_t Mod(int8_t period, int8_t argument);

@@ -45,7 +45,7 @@ class CO : public NextionScreen {  //control operations
   bool controlEnabled = false;
 
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 public:
   void updateTopMessage(const String& message);
   void updateControl(bool enabled);
@@ -54,20 +54,20 @@ public:
 };
 class BE : public DialogueScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 
   friend void beginCubeControlD();
 };
 class EE : public DialogueScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 
   friend void dialogueYes();
   friend void dialogueCancel();
 };
 class SES : public DialogueScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 
   friend void scannerServoGoD();
 };
@@ -87,15 +87,15 @@ public:
 
 class SD : public NextionScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 };
 class CD : public NextionScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 };
 class CC : public NextionScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
 };
 
 
@@ -104,7 +104,7 @@ class SettingsScreen : public DialogueScreen, public ListScreen, public TitledSc
 protected:
   class SettingItem : public CollectionScreen::CollectionControl::Item {
   protected:
-    const String& name;
+    String name;
     Config* config;
     bool withPtr;
   public:
@@ -114,7 +114,7 @@ protected:
 
     void edit();
   };
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
   SettingsScreen(){};
 public:
   virtual void loadScreen() override;
@@ -147,23 +147,23 @@ protected:
   void setUint(bool value);
   void setInsert(bool value);
   void setBool(bool value);
-  void setLocked(bool value);  
-  void setFlags(bool Binary,bool Int,bool Uint,bool Insert,bool Bool, bool Locked);
-  
+  void setLocked(bool value);
+  void setFlags(bool Binary, bool Int, bool Uint, bool Insert, bool Bool, bool Locked);
+
   void updateString() const;
-  
+
   void moveCursor(bool right);
   void enterChar(char c);
   void eraseChar();
   void negate();
   void putPoint();
-  
+
   void apply();
   void cancel();
-  static const String& elName(uint8_t i);
+  static String elName(uint8_t i);
 public:
-  virtual const CommandSet& getCommandSet() const override;
-  
+  virtual const CommandSet getCommandSet() const override;
+
   ~EditorScreen();
   EditorScreen(Config* config, const String& title);
   virtual void loadScreen() override;
@@ -171,18 +171,20 @@ public:
 };
 class BiosInvite : public DialogueScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
   virtual void inputEvent() override;
 };
 class Bios : public DialogueScreen {
   virtual void loadScreen() override;
-  virtual const CommandSet& getCommandSet() const override;
+  virtual const CommandSet getCommandSet() const override;
   virtual void inputEvent() override;
 
   void showSettings();
 };
 
 class BiosSettings : public SettingsScreen {
+  BiosSettings(const Array<SettingItem*>& settingItems, const String& title, uint8_t numberOfVisibleItems)
+    : SettingsScreen(settingItems, title, numberOfVisibleItems) {}
 public:
   BiosSettings();
 };

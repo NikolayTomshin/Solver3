@@ -48,21 +48,21 @@ void CO::updateControl(bool enabled) {
   controlEnabled = enabled;
   if (isActive) loadControl();
 }
-const CommandSet& CO::getCommandSet() const {
+const CommandSet CO::getCommandSet() const {
   return demoSet();
 };
 
 void BE::loadScreen() {
   goNextionPage(F("BE"));
 }
-const CommandSet& BE::getCommandSet() const {
+const CommandSet BE::getCommandSet() const {
   return begSet();
 };
 
 void EE::loadScreen() {
   goNextionPage(F("EE"));
 }
-const CommandSet& EE::getCommandSet() const {
+const CommandSet EE::getCommandSet() const {
   return retSet();
 };
 
@@ -76,11 +76,11 @@ void SES::loadScreen() {
     loadVal(s, rm.scanner.servoAngles[i]);
   }
 }
-const CommandSet& SES::getCommandSet() const {
+const CommandSet SES::getCommandSet() const {
   return scannerServoSetD();
 };
 
-const CommandSet& SettingsScreen::getCommandSet() const {
+const CommandSet SettingsScreen::getCommandSet() const {
   return settingsSet();
 }
 EditorScreen::~EditorScreen() {
@@ -227,7 +227,7 @@ void EditorScreen::putPoint() {
     repString.replace(F("."), F(""));
   enterChar('.');
 }
-const CommandSet& EditorScreen::getCommandSet() const {
+const CommandSet EditorScreen::getCommandSet() const {
   return editorSet();
 }
 EditorScreen::EditorScreen(Config* config, const String& title)
@@ -250,7 +250,7 @@ EditorScreen::EditorScreen(Config* config, const String& title)
   setInsert(getBinary());
   cursorLimit = getBinary() ? repString.length() : 25;
 }
-const String& EditorScreen::elName(uint8_t i) {
+String EditorScreen::elName(uint8_t i) {
   if (i < 10) return letterIndex(F("b"), i);
   switch (i) {
     case 10: return F("err");
@@ -364,16 +364,50 @@ void SettingsScreen::SettingItem::edit() {
 }
 
 void SettingsScreen::loadScreen() {
+#ifdef SETDebug
+  Serial.println(F("Loading Settings"));
+  delay(20);
+#endif
   goNextionPage(F("LTR"));
+#ifdef SETDebug
+  Serial.println(F("Starting loading pageControl"));
+  delay(10);
+  if (pageControl == NULL)
+    Serial.print(F("НЕТ пэшконтрола"));
+  else
+    Serial.print(F("Page control !=NUll"));
+  delay(10);
+#endif
   pageControl->load();
+#ifdef SETDebug
+  Serial.println(F("PC loaded"));
+  delay(10);
+#endif
   collectionControl->load();
+#ifdef SETDebug
+  Serial.print(F("CC loaded"));
+  delay(10);
+#endif
 }
 SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const String& title, uint8_t numberOfVisibleItems)
   : TitledScreen(title) {
   const uint8_t& size = settingItems.getSize();
-  pageControl = new PageControl(
-    PageControl::simplePC(F("pc"), size / numberOfVisibleItems + bool(size % numberOfVisibleItems), 0));
+#ifdef SETDebug
+  Serial.print(F("New setting screen "));
+  Serial.print(size);
+  Serial.print(F(" settings\n\rVisible items "));
+  Serial.println(numberOfVisibleItems);
+#endif  //SETDebug
+  pageControl = new PageControl(PageControl::simplePC(F("pc"), size / numberOfVisibleItems + bool(size % numberOfVisibleItems), 0));
+#ifdef SETDebug
+  Serial.println(F("Page control+"));
+  delay(10);
+#endif  //SETDebug
   collectionControl = new CollectionControl(F("co"), size, 0, numberOfVisibleItems, &hideElement);
+#ifdef SETDebug
+  Serial.println(F("CollectionControl control+"));
+  delay(10);
+#endif  //SETDebug
   {
     uint8_t i = 0;
     for (ArrayIterator<SettingItem*> settingItem(settingItems); !settingItem.isEnd(); settingItem++) {
@@ -381,6 +415,14 @@ SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const St
       ++i;
     }
   }
+#ifdef SETDebug
+  Serial.println(F("CollectionControl control set"));
+  delay(10);
+#endif  //SETDebug
+#ifdef SETDebug
+  Serial.println(F("Not crashed yet "));
+  delay(20);
+#endif  //SETDebug
 }
 void SettingsScreen::inputEvent() {
   switch (CommandSet::args[0]) {
@@ -394,18 +436,22 @@ void SettingsScreen::onExit() {
   DialogueScreen::endDialogue(0);
 }
 
-const CommandSet& ShortDialogue::getCommandSet() const {
+const CommandSet ShortDialogue::getCommandSet() const {
   return shortDSet();
 }
 
 void Bios::loadScreen() {
   goNextionPage(F("Bios"));
 }
-const CommandSet& Bios::getCommandSet() const {
+const CommandSet Bios::getCommandSet() const {
   return biosSet();
 }
 void Bios::showSettings() {
   showDialogue(new BiosSettings);
+#ifdef SETDebug
+  Serial.print(F("End of bios settings"));
+  delay(10);
+#endif
 }
 void Bios::inputEvent() {
   switch (CommandSet::args[0]) {
@@ -417,7 +463,7 @@ void Bios::inputEvent() {
 void BiosInvite::loadScreen() {
   goNextionPage(F("BiosIntro"));
 }
-const CommandSet& BiosInvite::getCommandSet() const {
+const CommandSet BiosInvite::getCommandSet() const {
   return biosSet();
 }
 void BiosInvite::inputEvent() {
@@ -429,11 +475,20 @@ void BiosInvite::inputEvent() {
 BiosSettings::BiosSettings()
   : SettingsScreen() {
   const ConfigurableObject& startObj = reg.getConfObject(F("start"));  //get ConfObject of startup settings
-  const uint8_t& size = startObj.getNumberOfSettings();                //number of settings
-  Array<SettingItem*> settingItems(size);                              //initialize array
+#ifdef SETDebug
+  Serial.print(F("Bios found startup object"));
+#endif                                                  //SETDebug
+  const uint8_t size = startObj.getNumberOfSettings();  //number of settings
+#ifdef SETDebug
+  Serial.print(F(" there is "));
+  Serial.print(size);
+  Serial.print(F(" settings\n\r"));
+  delay(30);
+#endif                                     //SETDebug
+  Array<SettingItem*> settingItems(size);  //initialize array
   for (uint8_t i = 0; i < size; ++i) {
     const ConfigWithPtr& confW = startObj.getSetting(i);                //foreach setting
     settingItems[i] = new SettingItem(&confW, true, confW.toString());  //add setting item with EEPROM setting same name
   }
-  *(SettingsScreen*)this = SettingsScreen(settingItems, F("Параметры запуска"), 4);
+  *this = BiosSettings(settingItems, F("Параметры запуска"), 4);
 }
