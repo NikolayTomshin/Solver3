@@ -81,7 +81,6 @@ Axis ICubeState::sideOfSelection(const Vec& selection) {
   pout(F("\Selecting "));
   temp.print();
 #endif
-
   Axis side = Axis::maxDimension(selection);
 #ifdef PrintDebug
   pout(F("; Side "));
@@ -555,7 +554,7 @@ bool Vec8Iterator::isLoop() {
 uint8_t Vec8Iterator::getIteration() {
   return index;
 }
-void Vec8Iterator::updateVec() {
+Vec Vec8Iterator::sticker8() {
   switch (Mod8(shift + index)) {
     case 0: return Vec(1, 0, z);
     case 1: return Vec(1, 1, z);

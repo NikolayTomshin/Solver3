@@ -28,17 +28,16 @@ public:
   CubeOperation(const Rotation& other);
 };
 class Vec8Iterator : public FunctionIterator<Vec> {
-protected:
-  int8_t shift;
-  uint8_t index = 0;
-  int8_t z;
-  Vec value;
-public:
-  Vec8Iterator() {}
-  uint8_t getIteration();
 private:
-  virtual void updateVec();
-
+  static Vec helper(uint8_t index){
+    return 
+  }
+protected:
+  int8_t z  
+public:
+  Vec8Iterator(int8_t z_, int8_t shift_ = 0):FunctionIterator() {}
+  Vec sticker8();
+private:
   friend class CubeSidePieceIterator;
 };
 

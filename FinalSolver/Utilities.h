@@ -153,20 +153,26 @@ public:
   virtual operator--();
   virtual void begin(bool backwards = false);
 };
+template<class F> struct Func;  //single Arg function template declaration
+template<class R, class... Args> struct Func<R(Args...)> {
+  using t = R (*)(Args...);
+};
+
 template<class T> class FunctionIterator : public BiderectionalIterator<T> {
-public:
-  typedef T (*retByIndexFP)(uint8_t);
 protected:
   T result;
-  retByIndexFP func;
   uint8_t limit = 0;
-
-  virtual void evaluate() override {
-    result = move((*func)(this->counter));
+  int8_t shift = 0;
+  uint16_t getIndex() const {
+    return Mod(limit, this->counter + shift);
   }
+  void setResult(T&& result) {
+    this->result = forward<T>(result);
+  }
+  virtual void evaluate() = 0;  //result=move(F(???))
 public:
-  FunctionIterator(retByIndexFP func, uint8_t limit)
-    : func(func), limit(limit) {}
+  FunctionIterator(uint8_t limit, int8_t shift)
+    : limit(limit), shift(shift) {}
   ~FunctionIterator() = default;
   uint16_t getSize() const override;
 
@@ -175,6 +181,23 @@ public:
 
   virtual T& operator*() override;
   virtual const T& operator*() const override;
+};
+template<class T> class SimpleFunctionIterator : public FunctionIterator<T> {
+protected:
+  T(*func)(uint8_t)  = NULL;
+  virtual void evaluate() override {
+    this->result = move((*func)(getIndex()));
+  }
+public:
+  SimpleFunctionIterator(T (*func)(uint8_t), uint8_t limit, int8_t shift)
+    : FunctionIterator<T>(limit, shift), func(func) {}
+};
+template<class T> class MemberFunctionIterator : public FunctionIterator<T> {
+protected:
+  virtual helper(MemberFunctionIterator* this, ) = 0;
+  virtual void evaluate() override {
+    result = move();
+  }
 };
 template<class T> class RandomAccessIterator : public BiderectionalIterator<T> {  //fast access by index
 protected:
@@ -392,6 +415,8 @@ template<class T> T& FunctionIterator<T>::operator[](uint16_t index) {
   return result;
 }
 template<class T> const T& FunctionIterator<T>::operator[](uint16_t index) const {
+  setIndex(index);
+  return result;
 }
 ///FuncIterator
 //RandomAccessIterator
