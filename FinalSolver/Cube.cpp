@@ -194,40 +194,10 @@ it 0 1 2 3 4 5 6 7 8 9 10 11
     pnl();
   }
 }
-class AxonometricIterator : public IIterator<Vec> {
-  Vec value;
-  uint8_t index;
-  Cs viewCs;
+class AxonometricIterator : public FunctionIterator<Vec> {
 public:
-  uint8_t getIndex() {
-    return index;
-  }
-  AxonometricIterator(const Orientation& orientation) {
-    index = 0;
-    viewCs = orientation.getCs();
-    updValue();
-    ptr = &value;
-  }
-  AxonometricIterator& operator+=(int8_t other) {
-    index += other;
-    updValue();
-    return *this;
-  }
-  AxonometricIterator& operator-=(int8_t other) {
-    index -= other;
-    updValue();
-    return *this;
-  }
-  bool isEnd() const {
-    return index >= 24;
-  }
-  bool isLoop() {
-    if (isEnd()) {
-      index = 0;
-      return true;
-    }
-    return false;
-  }
+  AxonometricIterator()
+    : FunctionIterator(&vecsOfStickers, 24) {}
   Vec oneGo() {
     Vec temp = value;
     operator++();
@@ -244,152 +214,56 @@ protected:
 |___|___|___|/|33/       `\34_\35_\36_\37|\|
 |38 |39 |40 |41/           `\42_\_D_\43_\|44
 |___|___|___|/  Penalty=XXX  `\45_\46_\47_\| */
-  void updValue() {
+  static Vec vecsOfStickers(uint8_t i) {
     switch (index) {
-      case 0:
-        value = Vec(-1, -1, 2);
-        break;
-      case 1:
-        value = Vec(-1, 0, 2);
-        break;
-      case 2:
-        value = Vec(-1, 1, 2);
-        break;
-      case 3:
-        value = Vec(-2, 1, 1);
-        break;
-      case 4:
-        value = Vec(-2, 0, 1);
-        break;
-      case 5:
-        value = Vec(-2, -1, 1);
-        break;
-      case 6:
-        value = Vec(0, -1, 2);
-        break;
-      case 7:
-        value = Vec(0, 1, 2);
-        break;
-      case 8:
-        value = Vec(-1, 2, 1);
-        break;
-      case 9:
-        value = Vec(-1, -2, 1);
-        break;
-      case 10:
-        value = Vec(1, -1, 2);
-        break;
-      case 11:
-        value = Vec(1, 0, 2);
-        break;
-      case 12:
-        value = Vec(1, 1, 2);
-        break;
-      case 13:
-        value = Vec(0, 2, 1);
-        break;
-      case 14:
-        value = Vec(-2, 1, 0);
-        break;
-      case 15:
-        value = Vec(-2, -1, 0);
-        break;
-      case 16:
-        value = Vec(0, -2, 1);
-        break;
-      case 17:
-        value = Vec(2, -1, 1);
-        break;
-      case 18:
-        value = Vec(2, 0, 1);
-        break;
-      case 19:
-        value = Vec(2, 1, 1);
-        break;
-      case 20:
-        value = Vec(1, 2, 1);
-        break;
-      case 21:
-        value = Vec(-1, 2, 0);
-        break;
-      case 22:
-        value = Vec(-1, -2, 0);
-        break;
-      case 23:
-        value = Vec(1, -2, 1);
-        break;
-      case 24:
-        value = Vec(-2, 1, -1);
-        break;
-      case 25:
-        value = Vec(-2, 0, -1);
-        break;
-      case 26:
-        value = Vec(-2, -1, -1);
-        break;
-      case 27:
-        value = Vec(2, -1, 0);
-        break;
-      case 28:
-        value = Vec(2, 1, 0);
-        break;
-      case 29:
-        value = Vec(1, 2, 0);
-        break;
-      case 30:
-        value = Vec(-1, 2, -1);
-        break;
-      case 31:
-        value = Vec(-1, -2, -1);
-        break;
-      case 32:
-        value = Vec(1, -2, 0);
-        break;
-      case 33:
-        value = Vec(0, 2, -1);
-        break;
-      case 34:
-        value = Vec(-1, 1, -2);
-        break;
-      case 35:
-        value = Vec(-1, 0, -2);
-        break;
-      case 36:
-        value = Vec(-1, -1, -2);
-        break;
-      case 37:
-        value = Vec(0, -2, -1);
-        break;
-      case 38:
-        value = Vec(2, -1, -1);
-        break;
-      case 39:
-        value = Vec(2, 0, -1);
-        break;
-      case 40:
-        value = Vec(2, 1, -1);
-        break;
-      case 41:
-        value = Vec(1, 2, -1);
-        break;
-      case 42:
-        value = Vec(0, 1, -2);
-        break;
-      case 43:
-        value = Vec(0, -1, -2);
-        break;
-      case 44:
-        value = Vec(1, -2, -1);
-        break;
-      case 45:
-        value = Vec(1, 1, -2);
-        break;
-      case 46:
-        value = Vec(1, 0, -2);
-        break;
-      case 47:
-        value = Vec(1, -1, -2);
-        break;
+      case 0: return Vec(-1, -1, 2);
+      case 1: return Vec(-1, 0, 2);
+      case 2: return Vec(-1, 1, 2);
+      case 3: return Vec(-2, 1, 1);
+      case 4: return Vec(-2, 0, 1);
+      case 5: return Vec(-2, -1, 1);
+      case 6: return Vec(0, -1, 2);
+      case 7: return Vec(0, 1, 2);
+      case 8: return Vec(-1, 2, 1);
+      case 9: return Vec(-1, -2, 1);
+      case 10: return Vec(1, -1, 2);
+      case 11: return Vec(1, 0, 2);
+      case 12: return Vec(1, 1, 2);
+      case 13: return Vec(0, 2, 1);
+      case 14: return Vec(-2, 1, 0);
+      case 15: return Vec(-2, -1, 0);
+      case 16: return Vec(0, -2, 1);
+      case 17: return Vec(2, -1, 1);
+      case 18: return Vec(2, 0, 1);
+      case 19: return Vec(2, 1, 1);
+      case 20: return Vec(1, 2, 1);
+      case 21: return Vec(-1, 2, 0);
+      case 22: return Vec(-1, -2, 0);
+      case 23: return Vec(1, -2, 1);
+      case 24: return Vec(-2, 1, -1);
+      case 25: return Vec(-2, 0, -1);
+      case 26: return Vec(-2, -1, -1);
+      case 27: return Vec(2, -1, 0);
+      case 28: return Vec(2, 1, 0);
+      case 29: return Vec(1, 2, 0);
+      case 30: return Vec(-1, 2, -1);
+      case 31: return Vec(-1, -2, -1);
+      case 32: return Vec(1, -2, 0);
+      case 33: return Vec(0, 2, -1);
+      case 34: return Vec(-1, 1, -2);
+      case 35: return Vec(-1, 0, -2);
+      case 36: return Vec(-1, -1, -2);
+      case 37: return Vec(0, -2, -1);
+      case 38: return Vec(2, -1, -1);
+      case 39: return Vec(2, 0, -1);
+      case 40: return Vec(2, 1, -1);
+      case 41: return Vec(1, 2, -1);
+      case 42: return Vec(0, 1, -2);
+      case 43: return Vec(0, -1, -2);
+      case 44: return Vec(1, -2, -1);
+      case 45: return Vec(1, 1, -2);
+      case 46: return Vec(1, 0, -2);
+      case 47: return Vec(1, -1, -2);
     }
     value *= viewCs;
   }
@@ -683,30 +557,14 @@ uint8_t Vec8Iterator::getIteration() {
 }
 void Vec8Iterator::updateVec() {
   switch (Mod8(shift + index)) {
-    case 0:
-      value = Vec(1, 0, z);
-      break;
-    case 1:
-      value = Vec(1, 1, z);
-      break;
-    case 2:
-      value = Vec(0, 1, z);
-      break;
-    case 3:
-      value = Vec(-1, 1, z);
-      break;
-    case 4:
-      value = Vec(-1, 0, z);
-      break;
-    case 5:
-      value = Vec(-1, -1, z);
-      break;
-    case 6:
-      value = Vec(0, -1, z);
-      break;
-    case 7:
-      value = Vec(1, -1, z);
-      break;
+    case 0: return Vec(1, 0, z);
+    case 1: return Vec(1, 1, z);
+    case 2: return Vec(0, 1, z);
+    case 3: return Vec(-1, 1, z);
+    case 4: return Vec(-1, 0, z);
+    case 5: return Vec(-1, -1, z);
+    case 6: return Vec(0, -1, z);
+    case 7: return Vec(1, -1, z);
     default:;
   }
 #ifdef IteratorDebug
@@ -1206,10 +1064,10 @@ void CubeColors::writeCube(Cube& cube) const {
 #endif
         axisGot++;
       }
-      if (dI > 2) {                                       //cursor cursor-1    0 1 2   i j i1 i2   shift
-        pout(F("Error can't find 2 sides for piece at "));//0+1= 1    0       [i,j,_]->i,j  0  1     0
-        piecePosition.print();                            //0+2= 2    1       [i,_,k]->k,i  2  0     2
-        poutN("!");                                       //1+2= 3    2       [_,j,k]->j,k  1  2     1
+      if (dI > 2) {                                         //cursor cursor-1    0 1 2   i j i1 i2   shift
+        pout(F("Error can't find 2 sides for piece at "));  //0+1= 1    0       [i,j,_]->i,j  0  1     0
+        piecePosition.print();                              //0+2= 2    1       [i,_,k]->k,i  2  0     2
+        poutN("!");                                         //1+2= 3    2       [_,j,k]->j,k  1  2     1
       }
     }
     axisGot = Mod3(-(cursor - 1));

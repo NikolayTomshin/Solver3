@@ -20,6 +20,7 @@ char digitOf(uint8_t i);
 uint8_t valueOf(char c);
 
 int8_t cycleDistanceVector(int8_t position, int8_t target, uint8_t cycleLength);
+template<class T> T mirrorValueOnRange(T from, T value, T until);
 
 uint16_t endOfTheLine(const String& string, const uint8_t& lineSize, const uint16_t& lineStart, const String& separator);
 uint16_t indexOfSkipping(const String& string, uint16_t startingIndex, const String& separator, bool directionForward = true);
@@ -33,7 +34,7 @@ template<class T> T absLimits(T value, T limit, bool upperLimit = true);
 
 template<class T> T arSum(T arr[], uint8_t size);
 template<class T> T minMax(const T array[], uint8_t size, bool max);
-template<class T> void copyArray(T source[], T target[], uint8_t size);
+template<class T> void copyArray(T source[], T target[], uint16_t size);
 template<class T> void printArray(T arr[], uint8_t size);
 template<class T> int16_t indexIn(T array[], uint8_t size, const T& sample, uint8_t skip = 0);
 template<class T> int16_t indexInLast(T array[], uint8_t size, const T& sample, uint8_t skip = 0);
@@ -49,24 +50,279 @@ template<class T> void swap(T& a, T& b);
 template<class T> bool sort(T& a, T& b, bool ascending);
 
 template<class T> T& getRef(void* ptr);
+template<class T> const T& getConstRef(const void* ptr);
 
-
-template<class T> class IIterator {
-protected:
-  T* ptr;
-public:
-  virtual IIterator& operator+=(int8_t other) = 0;
-  virtual IIterator& operator-=(int8_t other) = 0;
-  virtual bool isEnd() const = 0;
-  virtual bool isLoop() = 0;
-
-  T& operator++();
-  T& operator--();
-  virtual T& operator*();
-  virtual const T& operator*() const;
+//move semantics
+template<class T>
+struct _Remove_reference {  // remove reference
+  typedef T _noRef;
 };
+template<class T>
+struct _Remove_reference<T&> {  // remove reference
+  typedef T _noRef;
+};
+template<class T>
+struct _Remove_reference<T&&> {  // remove rvalue reference
+  typedef T _noRef;
+};
+template<class T>
+inline typename _Remove_reference<T>::_noRef&&
+move(T&& _Arg) noexcept {  //forwarding reference
+  return static_cast<typename _Remove_reference<T>::_noRef&&>(_Arg);
+}
+template<class T> inline T&& forward(typename _Remove_reference<T>::_noRef& _Arg) noexcept {
+  return static_cast<T&&>(_Arg);
+}
+template< class T >
+constexpr const T& as_const(T& t) noexcept {
+  return t;
+}
+///move semantics
 
-template<class T> class HalfDevision {  //for effective halve division method
+//collections
+template<class T> class KPtr {  //unique pointer
+protected:
+  T* ptr = NULL;
+public:
+  KPtr()
+    : ptr(NULL) {}
+  KPtr(T* ptr) {
+    this->ptr = ptr;
+  }
+  KPtr(KPtr&& other) {
+    swap(this->prt, other.ptr);
+    if (this->ptr == ptr)
+      other.prt = NULL;
+  }
+  ~KPtr() {
+    delete ptr;
+  }
+  KPtr& operator=(KPtr&& other) {
+    swap(this->ptr, other.ptr);
+    return *this;
+  }
+  T* operator->() const {
+    return ptr;
+  }
+  T* release() {
+    T* temp = ptr;
+    ptr = NULL;
+    return temp;
+  }
+  T& operator*() const {
+    return *ptr;
+  }
+};
+class ICollection {  //collection contains number of items
+public:
+  virtual uint16_t getSize() const = 0;  //collection always have number of items
+};
+template<class T> class IndexedCollection : public ICollection {  //indexed collection allow access to elements by index
+public:
+  virtual T& operator[](uint16_t index) = 0;
+  virtual const T& operator[](uint16_t index) const = 0;
+};
+template<class T> class IIterator {
+public:
+  virtual bool notEnd() const = 0;
+
+  virtual T& operator*() = 0;
+  virtual const T& operator*() const = 0;
+};
+template<class T> class ForEachIterator : public IIterator<T> {  //foreach element of collection
+protected:
+  uint16_t counter = 0;
+public:
+  const volatile uint16_t& getCounter() const {
+    return counter;
+  }
+  virtual operator++() = 0;
+};
+template<class T> class BiderectionalIterator : public ForEachIterator<T>, public IndexedCollection<T> {
+protected:
+  bool backwards;
+
+  virtual void evaluate() {}
+public:
+  virtual bool notEnd() const override;
+  void setIndex(uint16_t index);
+  virtual BiderectionalIterator& reverse();
+
+  virtual operator+=(int16_t delta);
+  virtual operator++() override;
+  virtual operator--();
+  virtual void begin(bool backwards = false);
+};
+template<class T> class FunctionIterator : public BiderectionalIterator<T> {
+public:
+  typedef T (*retByIndexFP)(uint8_t);
+protected:
+  T result;
+  retByIndexFP func;
+  uint8_t limit = 0;
+
+  virtual void evaluate() override {
+    result = move((*func)(this->counter));
+  }
+public:
+  FunctionIterator(retByIndexFP func, uint8_t limit)
+    : func(func), limit(limit) {}
+  ~FunctionIterator() = default;
+  uint16_t getSize() const override;
+
+  virtual T& operator[](uint16_t index) override;
+  virtual const T& operator[](uint16_t index) const override;
+
+  virtual T& operator*() override;
+  virtual const T& operator*() const override;
+};
+template<class T> class RandomAccessIterator : public BiderectionalIterator<T> {  //fast access by index
+protected:
+  T* pointer = NULL;
+public:
+  virtual BiderectionalIterator<T>& reverse() override;
+  virtual T& operator*() override;
+  virtual const T& operator*() const override;
+};
+template<class T> class Array : public IndexedCollection<T> {  //simple array
+protected:
+  T* array = NULL;
+  T* end = NULL;
+public:
+  Array() {}
+  Array(T array[], uint16_t size);
+  Array(uint16_t size);
+  ~Array();  //5
+  Array(const Array& other);
+  Array(Array&& other);
+  Array& operator=(const Array& other);
+  Array& operator=(Array&& other);  ///5
+
+  uint16_t getSize() const override;
+
+  virtual T& operator[](uint16_t index) override;
+  virtual const T& operator[](uint16_t index) const override;
+
+  template<class RT> class ArrayIterator : public RandomAccessIterator<RT>, protected Array<T> {
+  protected:
+    ArrayIterator(T* first, T* pointer, T* last, bool reverse = false) {
+      this->array = first;
+      this->pointer = pointer;
+      this->end = last;
+      if (reverse) this->reverse();
+    }
+    virtual void evaluate() override {
+      this->pointer = this->first + this->counter;
+    }
+  public:
+    ~ArrayIterator() {
+      this->array = NULL;
+    }
+    virtual bool notEnd() const override;
+    virtual void setIndex(uint16_t index) override;
+    virtual RT& operator*() override;
+    virtual const RT& operator*() const override;
+    virtual RT& operator[](uint16_t index) override;
+    virtual const RT& operator[](uint16_t index) const override;
+
+    friend class Array<T>;
+  };
+  ArrayIterator<T> iterator(uint16_t skip = 0, uint16_t keep = 0, bool reverse = false) {
+    return ArrayIterator<T>(array, array + skip, end - keep, reverse);
+  }
+};  ///Array
+//Stack
+template<class T> class Stack : public IndexedCollection<T> {
+protected:
+  class StackNode {
+  public:
+    T value;
+    StackNode* prev = NULL;
+    StackNode(StackNode* previous, T&& value_) {  //universal reference
+      value = value_;
+      prev = previous;
+    }
+    StackNode(StackNode&& other) {
+      swap(value, other.value);
+    }
+    T pop() {
+      T temp = move(value);
+      delete this;
+      return temp;
+    }
+  };
+  StackNode* head = NULL;  //head<- push
+  StackNode* tail = NULL;  //tail<- pushback
+  uint16_t size = 0;
+
+  StackNode* nodeByIndex(uint16_t index) const;
+  StackNode* unChainedNode(uint16_t index);
+  template<class U> void insertNode(uint16_t index, U&& value);
+  StackNode*& pointerToNodeByIndex(uint16_t index) const;
+public:
+  Stack() {}
+  ~Stack();  //5
+  Stack(const Stack& other);
+  Stack(Stack&& other);
+  Stack& operator=(const Stack& other);
+  Stack& operator=(Stack&& other);  ///5
+
+  uint16_t getSize() const override;
+  void clear();
+
+  const T& peek() const;
+  const T& peekBack() const;
+  virtual T& operator[](uint16_t index) override;
+  virtual const T& operator[](uint16_t index) const override;
+
+  T pop();  //normal pop
+  T popBack();
+  T popFromFront(uint16_t skip);
+  T popFromBack(uint16_t skip);
+
+  template<class U> void push(U&& value);
+  template<class U> void pushBack(U&& value);
+  template<class U> void pushFromFront(U&& value, uint16_t skip);
+  template<class U> void pushFromBack(U&& value, uint16_t skip);
+
+  void swap(uint16_t a, uint16_t b, bool backwards);  //swap by index
+  void reverse();
+
+  class StackIteratorForeach : public ForEachIterator<T> {
+  protected:
+    StackNode* currentNode;
+  public:
+    StackIteratorForeach(StackNode* start);
+
+    virtual bool notEnd() const override;
+
+    virtual T& operator*() override;
+    virtual const T& operator*() const override;
+    virtual operator++() override;
+
+    friend class Stack<T>;
+  };  ///StackIteratorForeach
+  class StackIteratorRandomAccess : public Array<T*>::template ArrayIterator<T> {
+  protected:
+
+  public:
+    virtual T& operator*() override {
+      return **(this->pointer);
+    }
+    virtual const T& operator*() const override {
+      return **(this->pointer);
+    }
+  };  ///StackIteratorRandomAccess
+
+  StackIteratorForeach iteratorForEach(bool topToButtom) const;
+  StackIteratorRandomAccess iteratorRandom(bool topToButtom) const;
+protected:
+  Array<T*> arrayForRandomAccess() const;
+};  ///Stack
+
+
+template<class T>
+class HalfDevision {  //for effective halve division method
   T step;
   T value;
   T margin;
@@ -83,193 +339,203 @@ private:
   void decStep();
 };
 
-class ICollection {
-public:
-  virtual uint8_t getSize() const = 0;
-};
 
-template<class T> class StackIterator;  //forward declaration
-template<class T> class Stack : public ICollection {
-protected:
-  class StackNode {
-  public:
-    T value;
-    StackNode* prev = NULL;
-    StackNode(StackNode* previous, const T& value_) {
-      value = value_;
-      prev = previous;
-    }
-    T pop() {
-      T temp = value;
-      delete this;
-      return temp;
-    }
-  };
-  StackNode* head = NULL;
-  StackNode* tail = NULL;
-  uint8_t size = 0;
-public:
-  virtual ~Stack() {}
-  virtual Stack<T>* Clone() const = 0;
-  virtual void clear();
-  virtual T& peek() const;
-  virtual T& peek(uint8_t deeper) const;
-  virtual T pop();
-  virtual void popV();
-  virtual void push(const T& value);
-  virtual void pushBack(const T& value);
-  uint8_t getSize() const override;
-  void reverse();
-  friend class StackIterator<T>;
-};
-
-template<class T> class ValueStack : public Stack<T> {
-public:
-  ValueStack() {}
-  Stack<T>* Clone() const override;
-};
-
-template<class T> class PointerStack : public Stack<T*> {
-protected:
-  bool autoDelete = true;
-public:
-  void setAutodelete(bool value);
-  PointerStack(bool autoDel = true);
-  ~PointerStack();
-  Stack<T>* Clone() const override;
-  void clear() override;
-};
-
-template<class T> class CollectionIterator : public IIterator<T> {  //iterator over collection
-protected:
-  ICollection* collection = NULL;
-  bool looped = false;
-  uint8_t index = 0;
-public:
-  uint8_t getSize() const;
-  T& operator[](uint8_t other);  //set and return
-  CollectionIterator& operator+=(int8_t other) override;
-  CollectionIterator& operator-=(int8_t other) override;
-  bool isEnd() const override;
-  bool isLoop() override;
-protected:
-  void checkLoop(int8_t add);
-  virtual void updatePtr() = 0;
-};
-template<class T> class UnorderedCollectionIterator : public CollectionIterator<T> {  //collection elements don't allow fast
-protected:
-  T** ptrs = NULL;  //for every element
-  void updatePtr() override;
-public:
-  T& operator[](uint8_t other);  //set and return
-  ~UnorderedCollectionIterator();
-  virtual void updatePtrs() = 0;
-};
-
-template<class T> class StackIterator : public UnorderedCollectionIterator<T> {
-public:
-  StackIterator(const Stack<T>& ref);
-  void updatePtrs() override;
-};
-
-template<class T> class ArrayIterator;
-template<class T> class Array : public ICollection {
-protected:
-  uint8_t size = 0;
-  T* values = NULL;
-public:
-  uint8_t getSize() const override;
-  ~Array();
-  Array() {}
-  Array(const uint8_t size);
-  Array(const uint8_t size, T* values);
-  T& operator[](uint8_t index);
-  const T& operator[](uint8_t index) const;
-  T& last();
-  friend class ArrayIterator<T>;
-};
-template<class T> class PointerArray : public Array<T*> {
-public:
-  PointerArray()
-    : Array<T*>() {}
-  PointerArray(const uint8_t size)
-    : Array<T*>(size) {
-    for (uint8_t i = 0; i < size; i++) this->values[i] = NULL;
-  }
-  T* take(uint8_t i);
-  ~PointerArray();
-};
-template<class T> class ArrayIterator : public CollectionIterator<T> {
-public:
-  ArrayIterator(const Array<T>& array);
-protected:
-  void updatePtr() override;
-};
 //=================================================================================================================================
-//===================realization===================================================================================================
+//===================implementation===================================================================================================
 //=================================================================================================================================
-//stack
+//refs
 template<class T> T& getRef(void* ptr) {
   return *((T*)ptr);
 }
-template<class T> ArrayIterator<T>::ArrayIterator(const Array<T>& array) {
-  this->collection = &array;
+template<class T> const T& getConstRef(const void* ptr) {
+  return *((T*)ptr);
 }
-template<class T> void ArrayIterator<T>::updatePtr() {
-  this->ptr = &(((Array<T>*)(this->collection))->values[this->index]);
+//BidirectionalIterator
+template<class T> void BiderectionalIterator<T>::setIndex(uint16_t index) {
+  this->counter = backwards ? mirrorValueOnRange<uint16_t>(0, index, getSize()) : index;
+  evaluate();
 }
-template<class T> T& Array<T>::last() {
-  return operator[](size - 1);
+template<class T> bool BiderectionalIterator<T>::notEnd() const {
+  return this->counter < getSize();
 }
-template<class T> Array<T>::Array(const uint8_t size) {
-  this->size = size;
-  values = new T[size];
+template<class T> BiderectionalIterator<T>::operator+=(int16_t delta) {
+  if (backwards) delta = -delta;
+  this->counter += delta;
 }
-template<class T> Array<T>::Array(const uint8_t size, T* values) {
-  this->size = size;
-  this->values = values;
+template<class T> BiderectionalIterator<T>::operator++() {
+  operator+=(1);
+};
+template<class T> void BiderectionalIterator<T>::begin(bool backwards) {
+  this->backwards = backwards;
+  setIndex(0);
 }
+template<class T> BiderectionalIterator<T>::operator--() {
+  operator+=(-1);
+};
+template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::reverse() {
+  backwards = !backwards;
+  setIndex(this->counter);
+}
+///BidirectionalIterator
+//FuncIterator
+template<class T> uint16_t FunctionIterator<T>::getSize() const {
+  return limit;
+}
+template<class T> T& FunctionIterator<T>::operator*() {
+  return result;
+}
+template<class T> const T& FunctionIterator<T>::operator*() const {
+  return result;
+}
+template<class T> T& FunctionIterator<T>::operator[](uint16_t index) {
+  setIndex(index);
+  return result;
+}
+template<class T> const T& FunctionIterator<T>::operator[](uint16_t index) const {
+}
+///FuncIterator
+//RandomAccessIterator
+template<class T> T& RandomAccessIterator<T>::operator*() {
+  return *pointer;
+}
+template<class T> const T& RandomAccessIterator<T>::operator*() const {
+  return *pointer;
+}
+
+///RandomAccessIterator
+//Array<T>
+template<class T>
+Array<T>::Array(T array[], uint16_t size) {  //from existing dynamic array
+  this->array = array;
+  end = array + size;
+}
+template<class T> Array<T>::Array(uint16_t size)
+  : Array(new T[size], size) {}
+
 template<class T> Array<T>::~Array() {
-  delete[] values;
+  delete[] array;
 }
-template<class T> T& Array<T>::operator[](uint8_t index) {
-  return values[index];
+template<class T> Array<T>::Array(const Array& other) {
+  *this = other;
 }
-template<class T> const T& Array<T>::operator[](uint8_t index) const {
-  return values[index];
+template<class T> Array<T>::Array(Array&& other) {
+  swap(this->array, other.array);
+  swap(this->end, other.end);
 }
-template<class T> uint8_t Array<T>::getSize() const {
-  return size;
+template<class T> Array<T>& Array<T>::operator=(const Array& other) {  //copy assignment
+  if (&other != this) {
+    delete[] array;
+    const uint16_t size = other.getSize();
+    this->array = new T[size];
+    copyArray(other.array, this->array, size);
+  }
+  return *this;
 }
-template<class T> T* PointerArray<T>::take(uint8_t i) {
-  T*& element = this->values[i];
-  T* temp = element;
-  element = NULL;
+template<class T> Array<T>& Array<T>::operator=(Array&& other) {  //move assignment
+  if (&other != this) {
+    *this = Array(move(other));
+  }
+  return *this;
+}
+template<class T> T& Array<T>::operator[](uint16_t index) {
+  return array[index];
+}
+template<class T> const T& Array<T>::operator[](uint16_t index) const {
+  return array[index];
+}
+template<class T> uint16_t Array<T>::getSize() const {
+  if (array < end) return end - array;
+  return 0;
+}
+///Array<T>
+//Array<T>::ArrayIterator
+template<class T> template<class RT> bool Array<T>::ArrayIterator<RT>::notEnd() const {
+  return (this->pointer < this->end) && (this->pointer >= this->array);
+}
+template<class T> template<class RT> void Array<T>::ArrayIterator<RT>::setIndex(uint16_t index) {
+  BiderectionalIterator<T>::setIndex(index);
+  this->pointer = this->array + this->counter;
+}
+template<class T> template<class RT> RT& Array<T>::ArrayIterator<RT>::operator*() {
+  return *(this->pointer);
+}
+template<class T> template<class RT> const RT& Array<T>::ArrayIterator<RT>::operator*() const {
+  return *(this->pointer);
+}
+template<class T> template<class RT> RT& Array<T>::ArrayIterator<RT>::operator[](uint16_t index) {
+  return this->array[index];
+}
+template<class T> template<class RT> const RT& Array<T>::ArrayIterator<RT>::operator[](uint16_t index) const {
+  return this->first[index];
+}
+///ArrayIterator
+///Array<T>
+//Stack<T>
+template<class T> typename Stack<T>::StackNode* Stack<T>::nodeByIndex(uint16_t index) const {
+  if (index >= size) return NULL;
+  index = size - 1 - index;  //how much skip
+  StackNode* temp = head;
+  while (index) {  //while skip
+    temp = temp->prev;
+    --index;
+  }
   return temp;
 }
-template<class T> PointerArray<T>::~PointerArray() {
-  for (uint8_t i = 0; i < this->size; ++i) {
-    T*& element = this->values[i];
-    if (element != NULL) delete element;
+template<class T> typename Stack<T>::StackNode* Stack<T>::unChainedNode(uint16_t index) {
+  StackNode* after = nodeByIndex(index + 1);
+  StackNode* selected = after->prev;
+  after->prev = selected->prev;
+  return selected;
+}
+template<class T> template<class U> void Stack<T>::insertNode(uint16_t index, U&& value) {
+  StackNode* after = nodeByIndex(index);
+  after->prev = new StackNode(after->prev, forward<U>(value));
+}
+template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndex(uint16_t index) const {
+  index %= size;
+  if (index == (size - 1)) return head;
+  return nodeByIndex(index + 1)->prev;
+}
+template<class T> Stack<T>::~Stack() {
+  clear();
+}
+template<class T> Stack<T>::Stack(const Stack<T>& other) {
+  *this = other;
+}
+template<class T> Stack<T>::Stack(Stack<T>&& other) {
+  *this = other;
+}
+template<class T> Stack<T>& Stack<T>::operator=(const Stack<T>& other) {
+  if (this != &other) {
+    if (size) clear();
+    for (auto stackIt = (other.iteratorForEach()); stackIt.notEnd(); stackIt++)
+      pushBack(*stackIt);
   }
+}
+template<class T> Stack<T>& Stack<T>::operator=(Stack<T>&& other) {
+  swap(this->tail, other.tail);
+  swap(this->head, other.head);
+  swap(this->size, other.size);
+}
+template<class T> uint16_t Stack<T>::getSize() const {
+  return size;
 }
 template<class T> void Stack<T>::clear() {
-  while (size > 0) pop();
+  while (size) pop();
 }
-template<class T> T& Stack<T>::peek() const {
+template<class T> const T& Stack<T>::peek() const {
   if (size) return head->value;
-  poutN("Stack is empty can't peek");
-}
-template<class T> T& Stack<T>::peek(uint8_t deeper) const {
-  if (size) {
-    if (!deeper)
-      return head->value;
-    StackNode* temp = head;
-    for (uint8_t i = 0; i < deeper; ++i)
-      temp = temp->prev;
-    return temp->value;
-  }
   poutN(F("Stack is empty can't peek"));
+}
+template<class T> const T& Stack<T>::peekBack() const {
+  if (size) return tail->value;
+  poutN(F("Stack is empty can't peek"));
+}
+template<class T> T& Stack<T>::operator[](uint16_t index) {
+  return nodeByIndex(index)->value;
+}
+template<class T> const T& Stack<T>::operator[](uint16_t index) const {
+  return nodeByIndex(index)->value;
 }
 template<class T> T Stack<T>::pop() {
   if (size) {
@@ -281,33 +547,76 @@ template<class T> T Stack<T>::pop() {
   }
   poutN(F("Stack is empty can't pop"));
 }
-template<class T> void Stack<T>::popV() {
-  if (!size) {
-    poutN(F("Stack is empty can't pop"));
-    return;
+template<class T> T Stack<T>::popBack() {
+  if (size) {
+    StackNode* temp = tail;
+    tail = nodeByIndex(1);
+    if (--size)
+      tail->prev = NULL;
+    else
+      head = NULL;
+    return temp->pop();
   }
-  StackNode* temp = head;
-  head = head->prev;
-  --size;
-  if (!size) tail = NULL;
-  delete temp;
+  poutN(F("Stack is empty can't pop"));
 }
-template<class T> void Stack<T>::push(const T& value) {
-  if (size < 255) {
-    head = new StackNode(head, value);
-    if (!size) tail = head;
-    size++;
-  } else poutN(F("Stack is full 255 can't push"));
+template<class T> T Stack<T>::popFromFront(uint16_t skip) {
+  skip %= size;
+  const uint16_t maxIndex = size - 1;
+  if (!skip) return pop();
+  if (skip == maxIndex) return popBack();
+  if (size) {
+    return unChainedNode(maxIndex - skip)->pop();
+  }
+  poutN(F("Stack is empty can't pop"));
 }
-template<class T> void Stack<T>::pushBack(const T& value) {
+template<class T> T Stack<T>::popFromBack(uint16_t skip) {
+  skip %= size;
+  if (!skip) return popBack();
+  if (skip == size - 1) return pop();
+  if (size) {
+    return unChainedNode(skip)->pop();
+  }
+  poutN(F("Stack is empty can't pop"));
+}
+template<class T> template<class U> void Stack<T>::push(U&& value) {
+  head = new StackNode(head, forward<U>(value));
+  if (!size) tail = head;
+  ++size;
+}
+template<class T> template<class U> void Stack<T>::pushBack(U&& value) {
   if (!size) return push(value);
-  if (size < 255) {
-    tail = (tail->prev = new StackNode(tail, value));
-    ++size;
-  } else poutN(F("Stack is full 255 can't push"));
+  tail = (tail->prev = new StackNode(tail, forward<U>(value)));
+  ++size;
 }
-template<class T> uint8_t Stack<T>::getSize() const {
-  return size;
+template<class T> template<class U> void Stack<T>::pushFromFront(U&& value, uint16_t skip) {
+  skip %= size;
+  const uint16_t maxIndex = size - 1;
+  if (!skip) return push(forward<U>(value));
+  if (skip == maxIndex) return pushBack(forward<U>(value));
+  if (size) return insertNode(forward<U>(value), maxIndex - skip);
+}
+template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint16_t skip) {
+  skip %= size;
+  if (!skip) return pushBack(forward<U>(value));
+  if (skip == (size - 1)) return push(forward<U>(value));
+  if (size) return insertNode(forward<U>(value), skip);
+}
+template<class T> void Stack<T>::swap(uint16_t a, uint16_t b, bool fromTop) {
+  if (size < 2) return;
+  a %= size;
+  b %= size;
+  if (fromTop) {
+    a = mirrorValueOnRange<uint16_t>(0, a, size);
+    b = mirrorValueOnRange<uint16_t>(0, b, size);
+  }
+  {
+    StackNode* aN = nodeByIndex(a);
+    StackNode* bN = nodeByIndex(b);
+    if (!a) tail = bN;
+    if (!b) tail = aN;
+    swap(aN->prev, bN->prev);
+  }
+  swap(pointerToNodeByIndex(a), pointerToNodeByIndex(b));
 }
 template<class T> void Stack<T>::reverse() {
   StackNode* leading = head;
@@ -322,105 +631,14 @@ template<class T> void Stack<T>::reverse() {
   }
   head = following;
 }
-//valueStack
-template<class T> Stack<T>* ValueStack<T>::Clone() const {
-  ValueStack<T>* ret = new ValueStack<T>;
-  auto temp = this->head;
-  for (uint8_t i = this->size; i > 0; i--) {
-    ret->push(temp->value);
-    temp = temp->prev;
-  }
-  ret->reverse();
-  return ret;
-}
-//ptrStack
-template<class T> void PointerStack<T>::setAutodelete(bool value) {
-  autoDelete = value;
-}
-template<class T> PointerStack<T>::PointerStack(bool autoDel = true) {
-  autoDelete = autoDel;
-}
-template<class T> PointerStack<T>::~PointerStack() {
-  clear();
-}
-template<class T> Stack<T>* PointerStack<T>::Clone() const {
-  PointerStack<T>* ret = new PointerStack<T>(autoDelete);
-  auto temp = this->head;
-  for (uint8_t i = this->size; i > 0; i--) {
-    if (autoDelete) ret->push(new T(temp->value));
-    else ret->push(temp->value);
-    temp = temp->prev;
-  }
-  ret->reverse();
-  return ret;
-}
-template<class T> void PointerStack<T>::clear() {
-  while (this->size > 0) {
-    T* temp = pop();
-    if (autoDelete) delete temp;
-  }
-}
-//Collection Iterator
-template<class T> UnorderedCollectionIterator<T>::~UnorderedCollectionIterator() {
-  delete[] ptrs;
-}
-template<class T> uint8_t CollectionIterator<T>::getSize() const {
-  return collection->getSize();
-}
-template<class T> T& CollectionIterator<T>::operator[](uint8_t other) {
-  uint8_t size = getSize();
-  index = other < size ? other : other % size;
-  updatePtr();
-  return *(this->ptr);
-}
-template<class T> T& UnorderedCollectionIterator<T>::operator[](uint8_t other) {
-  return CollectionIterator<T>::operator[](other);
-}
-template<class T> CollectionIterator<T>& CollectionIterator<T>::operator+=(int8_t other) {
-  checkLoop(other);
-  index = Mod(getSize(), other + index);
-  updatePtr();
-  return *this;
-}
-template<class T> CollectionIterator<T>& CollectionIterator<T>::operator-=(int8_t other) {
-  checkLoop(other);
-  index = Mod(getSize(), -other + index);
-  updatePtr();
-  return *this;
-}
-template<class T> bool CollectionIterator<T>::isEnd() const {
-  return looped;
-}
-template<class T> bool CollectionIterator<T>::isLoop() {
-  if (looped) {
-    looped = false;
-    return true;
-  }
-  return false;
-}
-template<class T> void CollectionIterator<T>::checkLoop(int8_t add) {
-  looped = ((add + index) >= getSize());
-}
-template<class T> void UnorderedCollectionIterator<T>::updatePtr() {
-  this->ptr = ptrs[this->index];
-}
-//stack iterator
-template<class T> StackIterator<T>::StackIterator(const Stack<T>& ref) {
-  this->collection = &ref;
-  updatePtrs();
-  updatePtr();
-}
-template<class T> void StackIterator<T>::updatePtrs() {
-  if (this->ptrs != NULL) delete[] this->ptrs;
-  this->ptrs = new T*[getSize()];
-  Stack<T>* tptr = ((Stack<T>*)(this->collection));
-  auto temp = tptr->head;
-  for (uint8_t i = getSize(); i > 0; i--) {
-    this->ptrs[i - 1] = &temp->value;
-    temp = temp->prev;
-  }
-}
-//
+
+//Stack<T>::StackForeach
+
+///Stack<T>::StackForeach
+//Stack<T>::StackRandomIterator
+
+///Stack<T>::StackRandomIterator
+///Stack<T>
 template<class T> T minMax(T a, T b, bool max) {
   return (max == (a > b)) ? a : b;
 }
@@ -459,18 +677,21 @@ template<class T> bool inMargin(const T& value, const T& target, const T& epsilo
   return (value + epsilon) >= target;
 }
 template<class T> void swap(T& a, T& b) {
-  T temp = a;
-  a = b;
-  b = temp;
+  T temp(move(a));
+  a = move(b);
+  b = move(temp);
 }
 template<class T> bool sort(T& a, T& b, bool ascending) {
   bool swapped = ((a > b) == ascending);
   if (swapped) swap(a, b);
   return swapped;
 }
-template<class T> void copyArray(T source[], T target[], uint8_t size) {
-  for (uint8_t i = 0; i < size; i++) {
-    target[i] = source[i];
+template<class T> void copyArray(T source[], T target[], uint16_t size) {
+  T* limit = source + size;
+  while (source < limit) {
+    *target = *source;
+    ++target;
+    ++source;
   }
 }
 template<class T> void valuesMergeSort(T array[], const uint8_t size, bool ascending = true) {
@@ -626,6 +847,9 @@ template<class T> int16_t indexOfcondition(T array[], uint8_t size, T sample, bo
   }
   return -1;
 }
+template<class T> T mirrorValueOnRange(T from, T value, T until) {
+  return until - value + from - 1;
+}
 template<class T> T minMax(const T array[], uint8_t size, bool max) {
   T minmax = *array;
   for (uint8_t i = 1; i < size; i++) {
@@ -660,20 +884,6 @@ template<class T, class V> void sortBy(T property[], V objects[], const uint8_t 
   copyArray(sortedProperties, property, size);
 }
 
-template<class T> T& IIterator<T>::operator++() {
-  operator+=(1);
-  return operator*();
-}
-template<class T> T& IIterator<T>::operator--() {
-  operator-=(1);
-  return operator*();
-}
-template<class T> T& IIterator<T>::operator*() {
-  return *ptr;
-}
-template<class T> const T& IIterator<T>::operator*() const {
-  return *ptr;
-}
 template<class T> bool HalfDevision<T>::isExpired() {
   return step <= (margin / 2);
 }

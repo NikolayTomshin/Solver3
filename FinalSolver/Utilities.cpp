@@ -108,3 +108,11 @@ uint8_t arcQuarter(int8_t x, int8_t y) {  //windmill
     return 2 + (x >= 0);
   else return 2 * (x < 0);
 }
+
+//Non templates
+//Array
+
+//ArrayIterator
+
+///ArrayIterator
+///Array

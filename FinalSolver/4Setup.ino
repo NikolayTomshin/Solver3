@@ -56,7 +56,12 @@ public:
 //SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP
 //#define SaveAllSettings //run once and set all configs with program values
 #define PCDEBUG
+
+
 void setup() {
+  String kek = "kek";
+  Serial.print(move(kek));
+  Serial.print(kek);
   Serial.begin(PCBAUD);  //begin pc port
 #ifdef PCDEBUG
   while (!Serial)

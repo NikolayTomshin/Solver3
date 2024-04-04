@@ -18,7 +18,7 @@
 class CubeOperation : public Rotation {
 public:
   virtual void print();  //print as formula
-  operator Rotation()const;
+  operator Rotation() const;
   CubeOperation() {
     code = 0;
   }
@@ -27,7 +27,7 @@ public:
   CubeOperation(const Axis& ax, const OrtAng& oa = 1);
   CubeOperation(const Rotation& other);
 };
-class Vec8Iterator : public IIterator<Vec> {
+class Vec8Iterator : public FunctionIterator<Vec> {
 protected:
   int8_t shift;
   uint8_t index = 0;
@@ -35,15 +35,6 @@ protected:
   Vec value;
 public:
   Vec8Iterator() {}
-  Vec8Iterator(int8_t z_, int8_t shift_ = 0);
-  void operator=(uint8_t other);
-
-  Vec8Iterator& operator+=(int8_t other) override;
-  Vec8Iterator& operator-=(int8_t other) override;
-
-  virtual bool isEnd() const override;
-  virtual bool isLoop() override;
-
   uint8_t getIteration();
 private:
   virtual void updateVec();
@@ -51,7 +42,7 @@ private:
   friend class CubeSidePieceIterator;
 };
 
-class CubeSidePieceIterator : public IIterator<Vec> {
+class CubeSidePieceIterator : public FunctionIterator<Vec> {
 protected:
   Vec value;                  //prepared vec
   Vec8Iterator sideIterator;  //side iterator
