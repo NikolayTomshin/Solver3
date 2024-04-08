@@ -1,11 +1,11 @@
 //setup and loop funcs
 
 void setup() {
-  reg.addObject(&rm.left, F("left"));
-  reg.addObject(&rm.right, F("right"));
-  reg.addObject(&rm, F("rm"));
-  reg.getSetting(F("reg/autoLd")).load();
-  if (reg.loadAll) reg.loadAllConfigs();
+  // reg.addObject(&rm.left, F("left"));
+  // reg.addObject(&rm.right, F("right"));
+  // reg.addObject(&rm, F("rm"));
+  // reg.getSetting(F("reg/autoLd")).load();
+  // if (reg.loadAll) reg.loadAllConfigs();
 
   Serial.begin(PCBAUD);
   Serial1.begin(NXBAUD);
