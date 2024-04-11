@@ -412,7 +412,7 @@ SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const St
 #endif  //SETDebug
   {
     uint8_t i = 0;
-    for (ArrayIterator<SettingItem*> settingItem(settingItems); !settingItem.isEnd(); settingItem++) {
+    for (auto settingItem=settingItems.iterator(); settingItem.notEnd(); ++settingItem) {
       (*collectionControl)[i] = *settingItem;
       ++i;
     }

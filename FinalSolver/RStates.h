@@ -1,3 +1,4 @@
+#pragma once
 #include "SCom.h"
 class RobotState : public IUpdatable {
 protected:

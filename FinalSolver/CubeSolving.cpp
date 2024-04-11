@@ -253,7 +253,7 @@ void OperationStack::pushOptimised(const CubeOperation& cOp) {
     if (getSize()) {
       Axis thisAxis = cOp.getAx();
 
-      CubeOperation& firstLast = peek();
+      CubeOperation& firstLast = item();
       OrtAng firstOA = firstLast.getOA();
       Axis firstAxis = firstLast.getAx();
 
@@ -265,7 +265,7 @@ void OperationStack::pushOptimised(const CubeOperation& cOp) {
         return;
       }
       if (getSize() > 1) {
-        CubeOperation& secondLast = peek(1);
+        CubeOperation& secondLast = item(1);
         Axis secondAxis = secondLast.getAx();
         OrtAng secondOA = secondLast.getOA();
         if (firstAxis.getDIndex() == secondAxis.getDIndex()) {
@@ -281,7 +281,7 @@ void OperationStack::pushOptimised(const CubeOperation& cOp) {
         }
       }
     }
-    ValueStack<CubeOperation>::push(cOp);  //push this operation finally after all checks for optimisation}
+    Stack<CubeOperation>::push(cOp);  //push this operation finally after all checks for optimisation}
   }
 }
 OperationStack& OperationStack::scramble(uint8_t moves, long seed) {

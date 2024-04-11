@@ -138,15 +138,15 @@ ConfigurableObject::initialize(const IConfigurable* object, const String& name, 
   name.toCharArray(this->name, 6);
 }
 void ConfigurableObject::print() const {
-  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
+  for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
     (*config).print();
 }
 void ConfigurableObject::saveAll() const {
-  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
+  for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
     (*config).save();
 }
 void ConfigurableObject::loadAll() const {
-  for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
+  for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
     (*config).load();
 }
 const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) const {
@@ -157,7 +157,7 @@ const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) co
   Serial.println(configName.length());
 #endif  //SETDebug
   if ((trackedSettings != NULL) && (configName.length() < 6))
-    for (ArrayIterator<ConfigWithPtr> config(*trackedSettings); !config.isEnd(); config++)
+    for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
       if (!configName.compareTo(String((*config).name))) {
 #ifdef SETDebug
         Serial.println(F("Found"));
@@ -220,7 +220,7 @@ const ConfigurableObject& EEPROM_register::getConfObject(const String& objName) 
   Serial.println(objName);
 #endif  //SETDebug
   if (objName.length() <= 6)
-    for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++) {
+    for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject) {
 #ifdef SETDebug
       Serial.print(F("Comparing to "));
       Serial.println((*confObject).name);
@@ -241,10 +241,10 @@ const ConfigWithPtr& EEPROM_register::getSetting(const String& path) const {
 }
 
 void EEPROM_register::loadAllConfigs() const {
-  for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++)
+  for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject)
     (*confObject).loadAll();
 }
 void EEPROM_register::saveAllConfigs() const {
-  for (StackIterator<ConfigurableObject> confObject(trackedObjects); !confObject.isEnd(); confObject++)
+  for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject)
     (*confObject).saveAll();
 }

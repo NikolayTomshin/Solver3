@@ -5,7 +5,7 @@
 #include "CubeSolving.h"
 #include "SCom.h"
 #include "RStates.h"
-#include "Str.h"
+//#include "Str.h"
 
 //System components
 RobotMotorics rm(6 /*7*/);  //Motorics object

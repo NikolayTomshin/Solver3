@@ -101,7 +101,7 @@ public:
 
 class EEPROM_register {  //2-level registry of ConfigurableObjects
 protected:
-  ValueStack<ConfigurableObject> trackedObjects;
+  Stack<ConfigurableObject> trackedObjects;
 public:
 
   void addObject(IConfigurable* object, const String& name);

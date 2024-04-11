@@ -7,6 +7,7 @@ class StrComposition;  //Composition of existing StrRefs
 
 class StrRep {  //universal string representation
 public:
+  virtual ~StrRep() = 0;
   //StrReference can be conveted to String
   virtual explicit operator String() const = 0;
   //or better to StrVal
@@ -21,10 +22,8 @@ public:
   virtual void toCharArray(char* charPtr, uint16_t length = 0) const = 0;
 
   //characters can be accesed as in array
-  virtual char& operator[](uint16_t index) = 0;
-  //characters can be accesed as in const array
-  virtual const char& operator[](uint16_t index) const = 0;
-  //Get information from representation
+  virtual char& operator[](uint16_t index) = 0;       //: IndexedCollection<char>
+  virtual char operator[](uint16_t index) const = 0;  //: IndexedCollection<char>
   //get substring
   virtual StrRep* substring(uint16_t from, uint16_t until) const = 0;
   //find substrings on char span left to right
@@ -69,7 +68,7 @@ public:
   virtual void toCharArray(char* charPtr, uint16_t length = 0) const override;
 
   virtual char& operator[](uint16_t index) override;  //characters can be accesed as in array
-  virtual const char& operator[](uint16_t index) const override;
+  virtual char operator[](uint16_t index) const override;
   //get information from representation
   //get substring
   virtual StrRep* substring(uint16_t from, uint16_t until) const override;
@@ -114,7 +113,7 @@ public:
 };
 
 struct StringPart;
-class StrComposition : public Stack<StringPart>, public StrRep {
+class StrComposition : private Stack<StringPart>, public StrRep {
 protected:
   struct StringPart {
     const StrRep& strRep;
@@ -139,9 +138,9 @@ public:
   virtual void toCharArray(char* charPtr, uint16_t length = 0) const override;
 
   //characters can be accesed as in array
-  virtual char& operator[](uint16_t index) override;
-  //characters can be accesed as in const array
-  virtual const char& operator[](uint16_t index) const override;
+  // virtual char& operator[](uint16_t index) override;
+  // //characters can be accesed as in const array
+  // virtual char operator[](uint16_t index) const override;
   //Get information from representation
   //get substring
   virtual StrRep* substring(uint16_t from, uint16_t until) const override;

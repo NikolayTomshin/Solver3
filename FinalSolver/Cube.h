@@ -27,37 +27,34 @@ public:
   CubeOperation(const Axis& ax, const OrtAng& oa = 1);
   CubeOperation(const Rotation& other);
 };
-class Vec8Iterator : public FunctionIterator<Vec> {
+class Vec8Iterator : public InternalFunctionIterator<Vec> {  //iterate over 8 integer |points|=1 of square border
 private:
-  static Vec helper(uint8_t index){
-    return 
-  }
 protected:
-  int8_t z  
+  virtual Vec internalValueProvider(uint8_t index) override;
+  int8_t z;
 public:
-  Vec8Iterator(int8_t z_, int8_t shift_ = 0):FunctionIterator() {}
-  Vec sticker8();
+  Vec8Iterator()
+    : Vec8Iterator(2, 0) {}
+  Vec8Iterator(int8_t z, int8_t shift = 0)
+    : InternalFunctionIterator(8, shift), z(z) {}
 private:
   friend class CubeSidePieceIterator;
 };
-
-class CubeSidePieceIterator : public FunctionIterator<Vec> {
+class Vec12Iterator : public Vec8Iterator {  //iterate over 12 integer points next to vec8
 protected:
-  Vec value;                  //prepared vec
-  Vec8Iterator sideIterator;  //side iterator
-  Cs sideCs;                  //cs to transform
+  virtual Vec internalValueProvider(uint8_t index) override;
 public:
-  CubeSidePieceIterator();
-  CubeSidePieceIterator(Axis side);
-
-  CubeSidePieceIterator& operator+=(int8_t other) override;
-  CubeSidePieceIterator& operator-=(int8_t other) override;
-
-  bool isEnd() const override;
-  bool isLoop() override;
-  uint8_t getIteration();
-private:
-  void updateVec();
+  Vec12Iterator()
+    : Vec8Iterator(1, 0) {}
+  Vec12Iterator(int8_t z, int8_t shift = 0)
+    : Vec8Iterator(12, shift) {}
+};
+class CubeSidePieceIterator : public Vec8Iterator {
+protected:
+  virtual Vec internalValueProvider(uint8_t index) override;
+  Cs sideCs;
+public:
+  CubeSidePieceIterator(const Axis& axis);
 };
 
 class ICubeState {

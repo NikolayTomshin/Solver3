@@ -91,9 +91,8 @@ public:
   }
 };
 
-class OperationStack : public ValueStack<CubeOperation> {
+class OperationStack : public Stack<CubeOperation> {
 public:
-  OperationStack() {}
   void print() {
     if (this != NULL) {
 #ifdef SvDebug
@@ -132,7 +131,7 @@ public:
   uint8_t getSolutionSize() {
     return solution.getSize();
   }
-  OperationStack* getSolution() const {
+  OperationStack& getSolution() {
     uint8_t solutionSize = getSolutionSize();
     if (solutionSize) {
 #ifdef SvDebug
@@ -140,7 +139,7 @@ public:
       pout(solutionSize);
       poutN(F(" long."));
 #endif
-      return solution.Clone();
+      return solution;
     }
   }
   void eraseSolution() {

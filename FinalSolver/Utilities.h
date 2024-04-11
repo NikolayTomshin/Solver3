@@ -113,9 +113,11 @@ public:
     return *ptr;
   }
 };
+//Collections
 class ICollection {  //collection contains number of items
 public:
   virtual uint16_t getSize() const = 0;  //collection always have number of items
+  virtual ~ICollection() {}
 };
 template<class T> class IndexedCollection : public ICollection {  //indexed collection allow access to elements by index
 public:
@@ -124,6 +126,7 @@ public:
 };
 template<class T> class IIterator {
 public:
+
   virtual bool notEnd() const = 0;
 
   virtual T& operator*() = 0;
@@ -136,7 +139,7 @@ public:
   const volatile uint16_t& getCounter() const {
     return counter;
   }
-  virtual operator++() = 0;
+  virtual ForEachIterator& operator++() = 0;
 };
 template<class T> class BiderectionalIterator : public ForEachIterator<T>, public IndexedCollection<T> {
 protected:
@@ -148,10 +151,10 @@ public:
   void setIndex(uint16_t index);
   virtual BiderectionalIterator& reverse();
 
-  virtual operator+=(int16_t delta);
-  virtual operator++() override;
-  virtual operator--();
-  virtual void begin(bool backwards = false);
+  virtual BiderectionalIterator& operator+=(int16_t delta);
+  virtual ForEachIterator<T>& operator++() override;
+  virtual BiderectionalIterator& operator--();
+  virtual BiderectionalIterator& begin(bool backwards = false);
 };
 template<class F> struct Func;  //single Arg function template declaration
 template<class R, class... Args> struct Func<R(Args...)> {
@@ -167,7 +170,7 @@ protected:
     return Mod(limit, this->counter + shift);
   }
   void setResult(T&& result) {
-    this->result = forward<T>(result);
+    this->result = result;
   }
   virtual void evaluate() = 0;  //result=move(F(???))
 public:
@@ -184,76 +187,164 @@ public:
 };
 template<class T> class SimpleFunctionIterator : public FunctionIterator<T> {
 protected:
-  T(*func)(uint8_t)  = NULL;
+  T(*func)
+  (uint8_t) = NULL;
   virtual void evaluate() override {
-    this->result = move((*func)(getIndex()));
+    setResult((*func)(this->getIndex()));
   }
 public:
+  SimpleFunctionIterator(SimpleFunctionIterator&& other) = default;
   SimpleFunctionIterator(T (*func)(uint8_t), uint8_t limit, int8_t shift)
     : FunctionIterator<T>(limit, shift), func(func) {}
 };
-template<class T> class MemberFunctionIterator : public FunctionIterator<T> {
+template<class T> class InternalFunctionIterator : public FunctionIterator<T> {
 protected:
-  virtual helper(MemberFunctionIterator* this, ) = 0;
+  virtual T internalValueProvider(uint8_t index) = 0;
   virtual void evaluate() override {
-    result = move();
+    setResult(internalValueProvider(this->getIndex()));
   }
+public:
+  InternalFunctionIterator(InternalFunctionIterator&& other) = default;
+  InternalFunctionIterator(uint8_t limit, int8_t shift = 0)
+    : FunctionIterator<T>(limit, shift) {}
 };
 template<class T> class RandomAccessIterator : public BiderectionalIterator<T> {  //fast access by index
 protected:
   T* pointer = NULL;
 public:
-  virtual BiderectionalIterator<T>& reverse() override;
   virtual T& operator*() override;
   virtual const T& operator*() const override;
 };
-template<class T> class Array : public IndexedCollection<T> {  //simple array
+template<class T> class ArrayKeeper : public ICollection {  //Control dynamic array<T>
 protected:
   T* array = NULL;
   T* end = NULL;
 public:
-  Array() {}
-  Array(T array[], uint16_t size);
-  Array(uint16_t size);
-  ~Array();  //5
-  Array(const Array& other);
-  Array(Array&& other);
-  Array& operator=(const Array& other);
-  Array& operator=(Array&& other);  ///5
+  ArrayKeeper() {}
+  ArrayKeeper(T array[], uint16_t size);
+  ArrayKeeper(uint16_t size);
+  virtual ~ArrayKeeper();  //5
+  ArrayKeeper(const ArrayKeeper& other);
+  ArrayKeeper(ArrayKeeper&& other);
+  ArrayKeeper& operator=(const ArrayKeeper& other);
+  ArrayKeeper& operator=(ArrayKeeper&& other);  ///5
 
-  uint16_t getSize() const override;
+  virtual uint16_t getSize() const override;
+};
+template<class T> class ArrayIterator;
+template<class T> class Array : virtual public IndexedCollection<T>, virtual public ArrayKeeper<T> {  //simple array
+public:
+  Array()
+    : ArrayKeeper<T>() {}
+  Array(T array[], uint16_t size)
+    : ArrayKeeper<T>(array, size) {}
+  Array(uint16_t size)
+    : ArrayKeeper<T>(size) {}
+  ~Array() {}  //5
+  Array(const Array& other)
+    : ArrayKeeper<T>(other) {}
+  Array(Array&& other)
+    : ArrayKeeper<T>(move(other)) {}
+  Array& operator=(const Array& other) = default;
+  Array& operator=(Array&& other) = default;  ///5
 
-  virtual T& operator[](uint16_t index) override;
-  virtual const T& operator[](uint16_t index) const override;
 
-  template<class RT> class ArrayIterator : public RandomAccessIterator<RT>, protected Array<T> {
-  protected:
-    ArrayIterator(T* first, T* pointer, T* last, bool reverse = false) {
-      this->array = first;
-      this->pointer = pointer;
-      this->end = last;
-      if (reverse) this->reverse();
-    }
-    virtual void evaluate() override {
-      this->pointer = this->first + this->counter;
-    }
-  public:
-    ~ArrayIterator() {
-      this->array = NULL;
-    }
-    virtual bool notEnd() const override;
-    virtual void setIndex(uint16_t index) override;
-    virtual RT& operator*() override;
-    virtual const RT& operator*() const override;
-    virtual RT& operator[](uint16_t index) override;
-    virtual const RT& operator[](uint16_t index) const override;
-
-    friend class Array<T>;
-  };
-  ArrayIterator<T> iterator(uint16_t skip = 0, uint16_t keep = 0, bool reverse = false) {
-    return ArrayIterator<T>(array, array + skip, end - keep, reverse);
+  virtual uint16_t getSize() const override {
+    return ArrayKeeper<T>::getSize();
   }
+  T& last(uint16_t skip = 0) {
+    return *(this->end - 1 - skip);
+  }
+  T& last(uint16_t skip = 0) const {
+    return *(this->end - 1 - skip);
+  }
+
+  virtual T& operator[](uint16_t index) override {
+    return this->array[index];
+  }
+  virtual const T& operator[](uint16_t index) const override {
+    return this->array[index];
+  }
+  ArrayIterator<T> iterator(uint16_t skip = 0, uint16_t keep = 0, bool reverse = false);
 };  ///Array
+    //ArrayConversionIterator
+template<class RT, class T> class ArrayConversionIterator : virtual public RandomAccessIterator<RT>, virtual protected ArrayKeeper<T> {
+protected:
+  virtual void evaluate() override {
+    this->pointer = this->array + this->counter;
+  }
+  ArrayConversionIterator(ArrayConversionIterator&& other) {
+    swap(this->array, other.array);
+    swap(this->pointer, other.pointer);
+    swap(this->end, other.end);
+    this->backwards = other.backwards;
+  }
+  ArrayConversionIterator(T* array, T* pointer, T* end, bool reverse = false) {
+    this->array = array;
+    this->pointer = pointer;
+    this->end = end;
+    if (reverse) this->reverse();
+  }
+public:
+  virtual uint16_t getSize() const override {
+    return ArrayKeeper<T>::getSize();
+  }
+  virtual bool notEnd() const override {
+    return this->array <= this->pointer && this->pointer < this->end;
+  }
+  virtual RT& operator*() = 0;
+  virtual const RT& operator*() const = 0;
+  virtual RT& operator[](uint16_t index) = 0;
+  virtual const RT& operator[](uint16_t index) const = 0;
+};  ///ArrayConversionIterator
+//ArrayIterator
+template<class T> class ArrayIterator : public ArrayConversionIterator<T, T> {
+protected:
+  ArrayIterator(T* array, T* pointer, T* end, bool reverse = false)
+    : ArrayConversionIterator<T, T>(array, pointer, end, reverse) {}
+public:
+  ArrayIterator(ArrayIterator&& other)
+    : ArrayConversionIterator<T, T>(move(other)) {}
+  ~ArrayIterator() {
+    this->array = NULL;
+  }
+  virtual T& operator*() override {
+    return *(this->pointer);
+  }
+  virtual const T& operator*() const override {
+    return *(this->pointer);
+  }
+  virtual T& operator[](uint16_t index) override {
+    return this->array[index];
+  }
+  virtual const T& operator[](uint16_t index) const override {
+    return this->array[index];
+  }
+  friend class Array<T>;
+};
+template<class T> class CollectionRandomAccessIterator : public ArrayConversionIterator<T, T*> {
+public:
+  CollectionRandomAccessIterator(CollectionRandomAccessIterator&& other)
+    : ArrayConversionIterator<T, T>(other) {}
+  CollectionRandomAccessIterator(Array<T*>&& pointers, bool reverse)
+    : ArrayConversionIterator<T, T*>(pointers.array, pointers.array, pointers.end, reverse) {}
+  ~CollectionRandomAccessIterator() {
+    delete this->array;
+  }
+  virtual T& operator*() override {
+    return **(this->pointer);
+  }
+  virtual const T& operator*() const override {
+    return **(this->pointer);
+  }
+  virtual T& operator[](uint16_t index) override {
+    return *(this->array[index]);
+  }
+  virtual const T& operator[](uint16_t index) const override {
+    return *(this->array[index]);
+  }
+};  ///CollectionRandomAccessIterator
+///ArrayIterator
 //Stack
 template<class T> class Stack : public IndexedCollection<T> {
 protected:
@@ -261,8 +352,8 @@ protected:
   public:
     T value;
     StackNode* prev = NULL;
-    StackNode(StackNode* previous, T&& value_) {  //universal reference
-      value = value_;
+    template<class U> StackNode(StackNode* previous, U&& value) {  //universal reference
+      this->value = forward<U>(value);
       prev = previous;
     }
     StackNode(StackNode&& other) {
@@ -295,6 +386,10 @@ public:
 
   const T& peek() const;
   const T& peekBack() const;
+
+  T& item(uint8_t index = 0);
+  T& itemBack(uint8_t index = 0);
+
   virtual T& operator[](uint16_t index) override;
   virtual const T& operator[](uint16_t index) const override;
 
@@ -308,39 +403,30 @@ public:
   template<class U> void pushFromFront(U&& value, uint16_t skip);
   template<class U> void pushFromBack(U&& value, uint16_t skip);
 
-  void swap(uint16_t a, uint16_t b, bool backwards);  //swap by index
+  void swap(uint16_t a, uint16_t b, bool fromTop);  //swap by index
   void reverse();
 
   class StackIteratorForeach : public ForEachIterator<T> {
   protected:
     StackNode* currentNode;
   public:
+    StackIteratorForeach(StackIteratorForeach&& other)
+      : currentNode(other.currentNode) {}
     StackIteratorForeach(StackNode* start);
 
     virtual bool notEnd() const override;
 
     virtual T& operator*() override;
     virtual const T& operator*() const override;
-    virtual operator++() override;
+    virtual ForEachIterator<T>& operator++() override;
 
     friend class Stack<T>;
   };  ///StackIteratorForeach
-  class StackIteratorRandomAccess : public Array<T*>::template ArrayIterator<T> {
-  protected:
 
-  public:
-    virtual T& operator*() override {
-      return **(this->pointer);
-    }
-    virtual const T& operator*() const override {
-      return **(this->pointer);
-    }
-  };  ///StackIteratorRandomAccess
-
-  StackIteratorForeach iteratorForEach(bool topToButtom) const;
-  StackIteratorRandomAccess iteratorRandom(bool topToButtom) const;
+  StackIteratorForeach iteratorForeach() const;
+  CollectionRandomAccessIterator<T> iteratorRandom(bool topToButtom) const;
 protected:
-  Array<T*> arrayForRandomAccess() const;
+  Array<T*> arrayForRandomAccess(bool topToButtom) const;
 };  ///Stack
 
 
@@ -375,29 +461,33 @@ template<class T> const T& getConstRef(const void* ptr) {
 }
 //BidirectionalIterator
 template<class T> void BiderectionalIterator<T>::setIndex(uint16_t index) {
-  this->counter = backwards ? mirrorValueOnRange<uint16_t>(0, index, getSize()) : index;
+  this->counter = backwards ? mirrorValueOnRange<uint16_t>(0, index, this->getSize()) : index;
   evaluate();
 }
 template<class T> bool BiderectionalIterator<T>::notEnd() const {
-  return this->counter < getSize();
+  return this->counter < this->getSize();
 }
-template<class T> BiderectionalIterator<T>::operator+=(int16_t delta) {
+template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::operator+=(int16_t delta) {
   if (backwards) delta = -delta;
   this->counter += delta;
+  evaluate();
+  return *this;
 }
-template<class T> BiderectionalIterator<T>::operator++() {
-  operator+=(1);
+template<class T> ForEachIterator<T>& BiderectionalIterator<T>::operator++() {
+  return operator+=(1);
 };
-template<class T> void BiderectionalIterator<T>::begin(bool backwards) {
+template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::begin(bool backwards) {
   this->backwards = backwards;
   setIndex(0);
+  return *this;
 }
-template<class T> BiderectionalIterator<T>::operator--() {
-  operator+=(-1);
+template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::operator--() {
+  return operator+=(-1);
 };
 template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::reverse() {
   backwards = !backwards;
   setIndex(this->counter);
+  return *this;
 }
 ///BidirectionalIterator
 //FuncIterator
@@ -411,11 +501,11 @@ template<class T> const T& FunctionIterator<T>::operator*() const {
   return result;
 }
 template<class T> T& FunctionIterator<T>::operator[](uint16_t index) {
-  setIndex(index);
+  this->setIndex(index);
   return result;
 }
 template<class T> const T& FunctionIterator<T>::operator[](uint16_t index) const {
-  setIndex(index);
+  this->setIndex(index);
   return result;
 }
 ///FuncIterator
@@ -426,28 +516,25 @@ template<class T> T& RandomAccessIterator<T>::operator*() {
 template<class T> const T& RandomAccessIterator<T>::operator*() const {
   return *pointer;
 }
-
 ///RandomAccessIterator
-//Array<T>
-template<class T>
-Array<T>::Array(T array[], uint16_t size) {  //from existing dynamic array
+//ArrayKeeper<T>
+template<class T> ArrayKeeper<T>::ArrayKeeper(T array[], uint16_t size) {  //from existing dynamic array
   this->array = array;
   end = array + size;
 }
-template<class T> Array<T>::Array(uint16_t size)
-  : Array(new T[size], size) {}
+template<class T> ArrayKeeper<T>::ArrayKeeper(uint16_t size)
+  : ArrayKeeper(new T[size], size) {}
 
-template<class T> Array<T>::~Array() {
+template<class T> ArrayKeeper<T>::~ArrayKeeper() {
   delete[] array;
 }
-template<class T> Array<T>::Array(const Array& other) {
+template<class T> ArrayKeeper<T>::ArrayKeeper(const ArrayKeeper& other) {
   *this = other;
 }
-template<class T> Array<T>::Array(Array&& other) {
-  swap(this->array, other.array);
-  swap(this->end, other.end);
+template<class T> ArrayKeeper<T>::ArrayKeeper(ArrayKeeper&& other) {
+  *this = other;
 }
-template<class T> Array<T>& Array<T>::operator=(const Array& other) {  //copy assignment
+template<class T> ArrayKeeper<T>& ArrayKeeper<T>::operator=(const ArrayKeeper& other) {  //copy assignment
   if (&other != this) {
     delete[] array;
     const uint16_t size = other.getSize();
@@ -456,44 +543,22 @@ template<class T> Array<T>& Array<T>::operator=(const Array& other) {  //copy as
   }
   return *this;
 }
-template<class T> Array<T>& Array<T>::operator=(Array&& other) {  //move assignment
+template<class T> ArrayKeeper<T>& ArrayKeeper<T>::operator=(ArrayKeeper&& other) {  //move assignment
   if (&other != this) {
-    *this = Array(move(other));
+    swap(this->array, other.array);
+    swap(this->end, other.end);
   }
   return *this;
 }
-template<class T> T& Array<T>::operator[](uint16_t index) {
-  return array[index];
-}
-template<class T> const T& Array<T>::operator[](uint16_t index) const {
-  return array[index];
-}
-template<class T> uint16_t Array<T>::getSize() const {
-  if (array < end) return end - array;
+template<class T> uint16_t ArrayKeeper<T>::getSize() const {
+  if (this->array < this->end) return this->end - this->array;
   return 0;
 }
-///Array<T>
-//Array<T>::ArrayIterator
-template<class T> template<class RT> bool Array<T>::ArrayIterator<RT>::notEnd() const {
-  return (this->pointer < this->end) && (this->pointer >= this->array);
+///ArrayKeeper<T>
+//Array<T>
+template<class T> ArrayIterator<T> Array<T>::iterator(uint16_t skip, uint16_t keep, bool reverse) {
+  return ArrayIterator<T>(this->array, this->array + skip, this->end - keep, reverse);
 }
-template<class T> template<class RT> void Array<T>::ArrayIterator<RT>::setIndex(uint16_t index) {
-  BiderectionalIterator<T>::setIndex(index);
-  this->pointer = this->array + this->counter;
-}
-template<class T> template<class RT> RT& Array<T>::ArrayIterator<RT>::operator*() {
-  return *(this->pointer);
-}
-template<class T> template<class RT> const RT& Array<T>::ArrayIterator<RT>::operator*() const {
-  return *(this->pointer);
-}
-template<class T> template<class RT> RT& Array<T>::ArrayIterator<RT>::operator[](uint16_t index) {
-  return this->array[index];
-}
-template<class T> template<class RT> const RT& Array<T>::ArrayIterator<RT>::operator[](uint16_t index) const {
-  return this->first[index];
-}
-///ArrayIterator
 ///Array<T>
 //Stack<T>
 template<class T> typename Stack<T>::StackNode* Stack<T>::nodeByIndex(uint16_t index) const {
@@ -533,7 +598,7 @@ template<class T> Stack<T>::Stack(Stack<T>&& other) {
 template<class T> Stack<T>& Stack<T>::operator=(const Stack<T>& other) {
   if (this != &other) {
     if (size) clear();
-    for (auto stackIt = (other.iteratorForEach()); stackIt.notEnd(); stackIt++)
+    for (auto stackIt = other.iteratorForEach(); stackIt.notEnd(); ++stackIt)
       pushBack(*stackIt);
   }
 }
@@ -550,11 +615,17 @@ template<class T> void Stack<T>::clear() {
 }
 template<class T> const T& Stack<T>::peek() const {
   if (size) return head->value;
-  poutN(F("Stack is empty can't peek"));
+  //poutN(F("Stack is empty can't peek"));
 }
 template<class T> const T& Stack<T>::peekBack() const {
   if (size) return tail->value;
-  poutN(F("Stack is empty can't peek"));
+  //poutN(F("Stack is empty can't peek"));
+}
+template<class T> T& Stack<T>::item(uint8_t index) {
+  return nodeByIndex(this->size - index - 1)->value;
+}
+template<class T> T& Stack<T>::itemBack(uint8_t index) {
+  return nodeByIndex(index)->value;
 }
 template<class T> T& Stack<T>::operator[](uint16_t index) {
   return nodeByIndex(index)->value;
@@ -570,7 +641,7 @@ template<class T> T Stack<T>::pop() {
     if (!size) tail = NULL;
     return temp->pop();
   }
-  poutN(F("Stack is empty can't pop"));
+  // poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popBack() {
   if (size) {
@@ -582,7 +653,7 @@ template<class T> T Stack<T>::popBack() {
       head = NULL;
     return temp->pop();
   }
-  poutN(F("Stack is empty can't pop"));
+  //poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popFromFront(uint16_t skip) {
   skip %= size;
@@ -592,7 +663,7 @@ template<class T> T Stack<T>::popFromFront(uint16_t skip) {
   if (size) {
     return unChainedNode(maxIndex - skip)->pop();
   }
-  poutN(F("Stack is empty can't pop"));
+  //poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popFromBack(uint16_t skip) {
   skip %= size;
@@ -601,7 +672,7 @@ template<class T> T Stack<T>::popFromBack(uint16_t skip) {
   if (size) {
     return unChainedNode(skip)->pop();
   }
-  poutN(F("Stack is empty can't pop"));
+  //poutN(F("Stack is empty can't pop"));
 }
 template<class T> template<class U> void Stack<T>::push(U&& value) {
   head = new StackNode(head, forward<U>(value));
@@ -609,7 +680,7 @@ template<class T> template<class U> void Stack<T>::push(U&& value) {
   ++size;
 }
 template<class T> template<class U> void Stack<T>::pushBack(U&& value) {
-  if (!size) return push(value);
+  if (!size) return push(forward<U>(value));
   tail = (tail->prev = new StackNode(tail, forward<U>(value)));
   ++size;
 }
@@ -656,14 +727,45 @@ template<class T> void Stack<T>::reverse() {
   }
   head = following;
 }
-
-//Stack<T>::StackForeach
-
-///Stack<T>::StackForeach
-//Stack<T>::StackRandomIterator
-
-///Stack<T>::StackRandomIterator
+//Stack<T>::StackIteratorForeach
+template<class T> Stack<T>::StackIteratorForeach::StackIteratorForeach(StackNode* start) {
+  currentNode = start;
+}
+template<class T> bool Stack<T>::StackIteratorForeach::notEnd() const {
+  return currentNode != NULL;
+}
+template<class T> T& Stack<T>::StackIteratorForeach::operator*() {
+  return currentNode->value;
+}
+template<class T> const T& Stack<T>::StackIteratorForeach::operator*() const {
+  return currentNode->value;
+}
+template<class T> ForEachIterator<T>& Stack<T>::StackIteratorForeach::operator++() {
+  if (notEnd())
+    currentNode = currentNode->prev;
+  return *this;
+}
+template<class T> typename Stack<T>::StackIteratorForeach Stack<T>::iteratorForeach() const {
+  return StackIteratorForeach(this->head);
+}
+template<class T> CollectionRandomAccessIterator<T> Stack<T>::iteratorRandom(bool topToButtom) const {
+  return CollectionRandomAccessIterator<T>(move(arrayForRandomAccess(topToButtom)));
+}
+template<class T> Array<T*> Stack<T>::arrayForRandomAccess(bool topToButtom) const {
+  Array<T*> ptrs = Array<T*>(size);
+  {
+    auto val = iteratorForeach();
+    auto ptr = ptrs.iterator(0, 0, !topToButtom);  //backwards=!topToButton
+    while (ptr.notEnd()) {
+      *ptr = *val;
+      ++val;
+      ++ptr;
+    }
+  }
+  return ptrs;
+}
 ///Stack<T>
+///Collections
 template<class T> T minMax(T a, T b, bool max) {
   return (max == (a > b)) ? a : b;
 }

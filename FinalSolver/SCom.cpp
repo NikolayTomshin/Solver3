@@ -357,7 +357,7 @@ void NextionScreen::reloadActive() {
 
 
 NextionScreen* DialogueScreen::fallBackScreen;
-ValueStack<DialogueScreen*> DialogueScreen::screenStack;
+Stack<DialogueScreen*> DialogueScreen::screenStack;
 char DialogueScreen::arg;
 
 bool DialogueScreen::ready() const {
@@ -404,7 +404,7 @@ void DialogueScreen::endDialogue(char arg) {
 PageScreen::~PageScreen() {
   delete pageControl;
 }
-void PageScreen::PageControl::print() const{
+void PageScreen::PageControl::print() const {
   Serial.print(currentPage);
   Serial.print(F("/"));
   Serial.print(numberOfPages);
@@ -513,7 +513,7 @@ CollectionScreen::CollectionControl::
   this->hideItem = hideItem;
   this->startingItemIndex = startingItemIndex;
   this->numberOfVisibleItems = numberOfVisibleItems;
-  items = PointerArray<Item>(sizeOfCollection);
+  items = Array<Item*>(sizeOfCollection);
 }
 CollectionScreen::CollectionControl::Item*& CollectionScreen::CollectionControl::operator[](uint8_t i) {  //access items
   return items[i];

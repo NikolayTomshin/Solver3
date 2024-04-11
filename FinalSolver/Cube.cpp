@@ -97,37 +97,7 @@ Axis ICubeState::sideOfSelection(const Vec& selection) {
     return side;
   return getOrientation(selection - side.getUnitVec()).coincidentComponent(side);
 }
-class Vec12Iterator : public Vec8Iterator {
-protected:
-public:
-  Vec12Iterator() {}
-  Vec12Iterator(int8_t z_, int8_t shift_ = 0) {
-    z = z_;
-    index = 0;
-    shift = shift_;
-    updateVec();
-    ptr = &value;
-  }
-  bool isEnd() const override {
-    return index >= 12;
-  }
-  bool isLoop() override {
-    if (isEnd()) {
-      index %= 12;
-      return true;
-    }
-    return false;
-  }
-protected:
-  void updateVec() override {
-    Axis side(Axis::nY);
-    uint8_t ind = Mod(12, index + shift);
-    side *= Rotation(Axis::Z, ind / 3);  //rotate
-    Cs temp(Axis::Z, side);              // i=z, j=side, k along side left to right
-    value = (side.getUnitVec() * 2) + (temp[2].getUnitVec() * (int8_t(ind % 3) - 1));
-    value[2] = z;
-  }
-};
+
 void ICubeState::printUnfolded(const Orientation& rotateAs) {
   /*
                                  s
@@ -166,9 +136,9 @@ it 0 1 2 3 4 5 6 7 8 9 10 11
       }
     } else {
       int8_t z = 4 - s;
-      for (Vec12Iterator it(z, 0); !it.isEnd(); it++) {
+      for (Vec12Iterator it(z, 0); it.notEnd(); it++) {
         f((*it) * rotateAs);
-        switch (it.getIteration()) {
+        switch (it.getCounter()) {
           case 2:
             pout('[');
             break;
@@ -193,16 +163,17 @@ it 0 1 2 3 4 5 6 7 8 9 10 11
     pnl();
   }
 }
-class AxonometricIterator : public FunctionIterator<Vec> {
+class AxonometricIterator : public InternalFunctionIterator<Vec> {
 public:
-  AxonometricIterator()
-    : FunctionIterator(&vecsOfStickers, 24) {}
+  AxonometricIterator(Orientation viewOrientation)
+    : InternalFunctionIterator(48, 0), viewOrientation(viewOrientation) {}
   Vec oneGo() {
-    Vec temp = value;
+    Vec temp = operator*();
     operator++();
     return temp;
   }
 protected:
+  Orientation viewOrientation;
   /*  ,___________.      .___________,      
     ,/_0_/_1_/_2,/|      | 3 | 4 | 5 |\     
   ,/_6_/_U_/_7,/|8|      |___|___|___|9|\   
@@ -213,7 +184,10 @@ protected:
 |___|___|___|/|33/       `\34_\35_\36_\37|\|
 |38 |39 |40 |41/           `\42_\_D_\43_\|44
 |___|___|___|/  Penalty=XXX  `\45_\46_\47_\| */
-  static Vec vecsOfStickers(uint8_t i) {
+  Vec internalValueProvider(uint8_t index) override {
+    return vecAx(index) * viewOrientation;
+  }
+  static Vec vecAx(uint8_t index) {
     switch (index) {
       case 0: return Vec(-1, -1, 2);
       case 1: return Vec(-1, 0, 2);
@@ -264,7 +238,6 @@ protected:
       case 46: return Vec(1, 0, -2);
       case 47: return Vec(1, -1, -2);
     }
-    value *= viewCs;
   }
 };
 void ICubeState::printAxonometric(const Orientation& rotateAs) {
@@ -502,8 +475,8 @@ Orientation Cube::getOrientation(const Vec& position) const {
 
 void Cube::operator*=(const CubeOperation& other) {
   uint8_t indexes[8];
-  for (CubeSidePieceIterator pos(other.getAx()); !pos.isEnd(); pos++) {
-    indexes[pos.getIteration()] = operator[](*pos);
+  for (CubeSidePieceIterator pos(other.getAx()); pos.notEnd(); pos++) {
+    indexes[pos.getCounter()] = operator[](*pos);
   }
   for (uint8_t i = 0; i < 8; i++)
     cubelets[indexes[i]] *= other;
@@ -516,46 +489,8 @@ void Cube::operator*=(const CubeOperation& other) {
 void Cube::operator/=(const CubeOperation& other) {
   operator*=(-other);
 }
-
-
-Vec8Iterator::Vec8Iterator(int8_t z_, int8_t shift_ = 0) {
-  z = z_;
-  index = 0;
-  shift = shift_;
-  updateVec();
-  ptr = &value;
-}
-void Vec8Iterator::operator=(uint8_t other) {
-  index = other;
-}
-Vec8Iterator& Vec8Iterator::operator+=(int8_t other) {
-  index += other;
-#ifdef IteratorDebug
-  // pout(index);
-#endif
-  updateVec();
-  return *this;
-}
-Vec8Iterator& Vec8Iterator::operator-=(int8_t other) {
-  index -= other;
-  updateVec();
-  return *this;
-}
-bool Vec8Iterator::isEnd() const {
-  return index > 7;
-}
-bool Vec8Iterator::isLoop() {
-  if (isEnd()) {
-    *this = 0;
-    return true;
-  }
-  return false;
-}
-uint8_t Vec8Iterator::getIteration() {
-  return index;
-}
-Vec Vec8Iterator::sticker8() {
-  switch (Mod8(shift + index)) {
+Vec vecs8(uint8_t index, int8_t z) {
+  switch (index) {
     case 0: return Vec(1, 0, z);
     case 1: return Vec(1, 1, z);
     case 2: return Vec(0, 1, z);
@@ -566,51 +501,37 @@ Vec Vec8Iterator::sticker8() {
     case 7: return Vec(1, -1, z);
     default:;
   }
-#ifdef IteratorDebug
-    // value.print();
-    // pout(index);
-#endif
+}
+Vec Vec8Iterator::internalValueProvider(uint8_t index) {
+  return vecs8(index, z);
+}
+Vec vecs12(uint8_t index, int8_t z) {
+  switch (index) {                   //x<Vy
+    case 0: return Vec(2, 0, z);     //<-
+    case 1: return Vec(0, 2, z);     //V
+    case 2: return Vec(-2, 0, z);    //->
+    case 3: return Vec(0, -2, z);    //^
+    case 4: return Vec(2, 1, z);     //.<-
+    case 5: return Vec(-1, 2, z);    //V.
+    case 6: return Vec(-2, -1, z);   //->'
+    case 7: return Vec(1, -2, z);    //'^
+    case 8: return Vec(2, -1, z);    //'<-
+    case 9: return Vec(1, 2, z);     //.V
+    case 10: return Vec(-2, 1, z);   //->.
+    case 11: return Vec(-1, -2, z);  //^'
+    default:;
+  }
+}
+Vec Vec12Iterator::internalValueProvider(uint8_t index) {
+  return vecs12(index, z);
 }
 
-CubeSidePieceIterator::CubeSidePieceIterator() {
-  ptr = &value;
-}
-CubeSidePieceIterator::CubeSidePieceIterator(Axis side) {
+CubeSidePieceIterator::CubeSidePieceIterator(const Axis& side)
+  : Vec8Iterator(1, 0) {
   sideCs = Cs(side);
-  sideIterator = Vec8Iterator(1, 0);
-  updateVec();
-  ptr = &value;
 }
-CubeSidePieceIterator& CubeSidePieceIterator::operator+=(int8_t other) {
-#ifdef IteratorDebug
-// pout("CubeSidePieceIterator+=!");
-#endif
-  sideIterator += other;
-  updateVec();
-#ifdef IteratorDebug
-  pout(F("Added"));
-#endif
-  return *this;
-}
-CubeSidePieceIterator& CubeSidePieceIterator::operator-=(int8_t other) {
-  sideIterator -= other;
-  updateVec();
-  return *this;
-}
-bool CubeSidePieceIterator::isEnd() const {
-  return sideIterator.isEnd();
-}
-bool CubeSidePieceIterator::isLoop() {
-  return sideIterator.isLoop();
-}
-void CubeSidePieceIterator::updateVec() {
-  value = (sideIterator.value) * sideCs;
-#ifdef IteratorDebug
-  // (sideIterator.operator*()).print();
-#endif
-}
-uint8_t CubeSidePieceIterator::getIteration() {
-  return sideIterator.getIteration();
+Vec CubeSidePieceIterator::internalValueProvider(uint8_t index) {
+  return vecs8(index, z) * sideCs;
 }
 
 CubeState::CubeState(const Cube& model) {
@@ -658,7 +579,7 @@ void CubeState::operator*=(const CubeOperation& other) {
   uint8_t orsValue[5];    //orientation of piece
   uint8_t i = 0;
   Rotation op = other;
-  for (CubeSidePieceIterator pos(other.getAx()); !pos.isEnd(); pos++) {
+  for (CubeSidePieceIterator pos(other.getAx()); pos.notEnd(); pos++) {
 #ifdef CubeStateOperationDebug
     pout(F("Accessing "));
     (*pos).print();
@@ -699,7 +620,7 @@ void CubeState::operator/=(const CubeOperation& other) {
 uint16_t ICubeState::statePenalty() const {
   uint16_t penalty = 0;
   for (int8_t z = -1; z < 2; z++)
-    for (Vec8Iterator pos(z, z == 0); !pos.isEnd(); pos += 2) {
+    for (Vec8Iterator pos(z, z == 0); pos.notEnd(); pos += 2) {
 #ifdef PenaltyDebug
       pout(F("Edge at"));
       (*pos).print();

@@ -183,7 +183,7 @@ public:
 class DialogueScreen : public NextionScreen, public IReady {
 protected:
   static NextionScreen* fallBackScreen = NULL;
-  static ValueStack<DialogueScreen*> screenStack;
+  static Stack<DialogueScreen*> screenStack;
   bool _ready = false;
 
   static char arg;
@@ -268,7 +268,7 @@ protected:
       virtual void loadItem(const String& collectionNamePrefix, uint8_t index) = 0;
     };
   protected:
-    PointerArray<Item> items;
+    Array<Item*> items;
     uint8_t startingItemIndex;
     uint8_t numberOfVisibleItems;
     uint8_t upperLimitOfAccess() const;
