@@ -232,7 +232,7 @@ public:
   virtual uint16_t getSize() const override;
 };
 template<class T> class ArrayIterator;
-template<class T> class Array : virtual public IndexedCollection<T>, virtual public ArrayKeeper<T> {  //simple array
+template<class T> class Array : public ArrayKeeper<T> {  //simple array
 public:
   Array()
     : ArrayKeeper<T>() {}
@@ -259,10 +259,10 @@ public:
     return *(this->end - 1 - skip);
   }
 
-  virtual T& operator[](uint16_t index) override {
+  virtual T& operator[](uint16_t index) {
     return this->array[index];
   }
-  virtual const T& operator[](uint16_t index) const override {
+  virtual const T& operator[](uint16_t index) const {
     return this->array[index];
   }
   ArrayIterator<T> iterator(uint16_t skip = 0, uint16_t keep = 0, bool reverse = false);
@@ -486,7 +486,6 @@ template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::operator--
 };
 template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::reverse() {
   backwards = !backwards;
-  setIndex(this->counter);
   return *this;
 }
 ///BidirectionalIterator
