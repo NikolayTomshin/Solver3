@@ -184,7 +184,7 @@ protected:
 |___|___|___|/|33/       `\34_\35_\36_\37|\|
 |38 |39 |40 |41/           `\42_\_D_\43_\|44
 |___|___|___|/  Penalty=XXX  `\45_\46_\47_\| */
-  Vec internalValueProvider(uint8_t index) override {
+  Vec internalValueProvider(uint16_t index) override {
     return vecAx(index) * viewOrientation;
   }
   static Vec vecAx(uint8_t index) {
@@ -502,7 +502,7 @@ Vec vecs8(uint8_t index, int8_t z) {
     default:;
   }
 }
-Vec Vec8Iterator::internalValueProvider(uint8_t index) {
+Vec Vec8Iterator::internalValueProvider(uint16_t index) {
   return vecs8(index, z);
 }
 Vec vecs12(uint8_t index, int8_t z) {
@@ -522,7 +522,7 @@ Vec vecs12(uint8_t index, int8_t z) {
     default:;
   }
 }
-Vec Vec12Iterator::internalValueProvider(uint8_t index) {
+Vec Vec12Iterator::internalValueProvider(uint16_t index) {
   return vecs12(index, z);
 }
 
@@ -530,7 +530,7 @@ CubeSidePieceIterator::CubeSidePieceIterator(const Axis& side)
   : Vec8Iterator(1, 0) {
   sideCs = Cs(side);
 }
-Vec CubeSidePieceIterator::internalValueProvider(uint8_t index) {
+Vec CubeSidePieceIterator::internalValueProvider(uint16_t index) {
   return vecs8(index, z) * sideCs;
 }
 

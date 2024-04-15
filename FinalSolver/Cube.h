@@ -30,7 +30,7 @@ public:
 class Vec8Iterator : public InternalFunctionIterator<Vec> {  //iterate over 8 integer |points|=1 of square border
 private:
 protected:
-  virtual Vec internalValueProvider(uint8_t index) override;
+  virtual Vec internalValueProvider(uint16_t index) override;
   int8_t z;
 public:
   Vec8Iterator()
@@ -42,7 +42,7 @@ private:
 };
 class Vec12Iterator : public Vec8Iterator {  //iterate over 12 integer points next to vec8
 protected:
-  virtual Vec internalValueProvider(uint8_t index) override;
+  virtual Vec internalValueProvider(uint16_t index) override;
 public:
   Vec12Iterator()
     : Vec8Iterator(1, 0) {}
@@ -51,7 +51,7 @@ public:
 };
 class CubeSidePieceIterator : public Vec8Iterator {
 protected:
-  virtual Vec internalValueProvider(uint8_t index) override;
+  virtual Vec internalValueProvider(uint16_t index) override;
   Cs sideCs;
 public:
   CubeSidePieceIterator(const Axis& axis);

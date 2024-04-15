@@ -59,14 +59,23 @@ public:
 
 
 void setup() {
-  String kek = "kek";
-  Serial.print(move(kek));
-  Serial.print(kek);
-  Serial.begin(PCBAUD);  //begin pc port
+  Serial.begin(PCBAUD);
 #ifdef PCDEBUG
   while (!Serial)
     ;
 #endif
+  Serial.println("Start");
+  Stack<int> s;
+  s.push(1);
+  s.push(2);
+  s.push(3);
+  {
+    auto it = s.iteratorRandom();
+    it.begin(true);
+    for (; it.notEnd(); ++it)
+      Serial.println(*it);
+  }
+  return;
   Serial.println(F("Start"));
   pcm.setCommandSet(pcSet());  //set pc commandSet
 

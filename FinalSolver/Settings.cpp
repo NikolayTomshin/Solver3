@@ -220,7 +220,7 @@ const ConfigurableObject& EEPROM_register::getConfObject(const String& objName) 
   Serial.println(objName);
 #endif  //SETDebug
   if (objName.length() <= 6)
-    for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject) {
+    for (auto confObject = trackedObjects.iteratorForward(); confObject.notEnd(); ++confObject) {
 #ifdef SETDebug
       Serial.print(F("Comparing to "));
       Serial.println((*confObject).name);
@@ -241,10 +241,10 @@ const ConfigWithPtr& EEPROM_register::getSetting(const String& path) const {
 }
 
 void EEPROM_register::loadAllConfigs() const {
-  for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject)
+  for (auto confObject = trackedObjects.iteratorForward(); confObject.notEnd(); ++confObject)
     (*confObject).loadAll();
 }
 void EEPROM_register::saveAllConfigs() const {
-  for (auto confObject = trackedObjects.iteratorForeach(); confObject.notEnd(); ++confObject)
+  for (auto confObject = trackedObjects.iteratorForward(); confObject.notEnd(); ++confObject)
     (*confObject).saveAll();
 }
