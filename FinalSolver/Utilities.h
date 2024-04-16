@@ -345,6 +345,9 @@ protected:
   StackNode* unChainedNode(uint16_t index);
   template<class U> void insertNode(uint16_t index, U&& value);
   StackNode*& pointerToNodeByIndex(uint16_t index);
+
+  Stack(StackNode* head, StackNode* tail, uint16_t size)
+    : head(head), tail(tail), size(size) {}
 public:
   Stack() {}
   ~Stack();  //5
@@ -377,6 +380,11 @@ public:
 
   void swapItems(uint16_t a, uint16_t b, bool fromTop);  //swap by index
   void reverse();
+
+  Stack<T> cutLast(uint16_t items);
+  Stack<T> cut(uint16_t from, uint16_t until);
+  Stack<T>& append(Stack<T>&& other);
+  Stack<T>& insert(Stack<T>&& other, uint16_t at);
 
   class StackIteratorForward : public ForwardIterator<T> {
   protected:
@@ -532,6 +540,7 @@ template<class T> typename Array<T>::ArrayIterator Array<T>::iterator(uint16_t s
 //Stack<T>
 template<class T> typename Stack<T>::StackNode* Stack<T>::nodeByIndex(uint16_t index) const {
   if (index >= size) return NULL;
+  if (!index) return tail;
   index = size - 1 - index;  //how much skip
   StackNode* temp = head;
   while (index) {  //while skip
@@ -671,6 +680,7 @@ template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint1
   if (size) return insertNode(skip, forward<U>(value));
 }
 template<class T> void Stack<T>::swapItems(uint16_t a, uint16_t b, bool fromTop) {
+  if (a == b) return;
   if (size < 2) return;
   a %= size;
   b %= size;
@@ -678,14 +688,13 @@ template<class T> void Stack<T>::swapItems(uint16_t a, uint16_t b, bool fromTop)
     a = mirrorValueOnRange<uint16_t>(0, a, size);
     b = mirrorValueOnRange<uint16_t>(0, b, size);
   }
-  {
-    StackNode* aN = nodeByIndex(a);
-    StackNode* bN = nodeByIndex(b);
-    if (!a) tail = bN;
-    if (!b) tail = aN;
-    swap(aN->prev, bN->prev);
-  }
-  swap(pointerToNodeByIndex(a), pointerToNodeByIndex(b));
+  //a, b -different indexes
+  auto aP = pointerToNodeByIndex(a);
+  auto bP = pointerToNodeByIndex(b);
+  if (!a) tail = bP;         //if a is the first point tail to b
+  else if (!b) tail = aP;    //if b is the first point tail to a
+  swap(aP, bP);              //swap forward pointers to nodes
+  swap(aP->prev, bP->prev);  //swap prev pointers
 }
 template<class T> void Stack<T>::reverse() {
   StackNode* leading = head;
@@ -699,6 +708,61 @@ template<class T> void Stack<T>::reverse() {
     following = exLeading;
   }
   head = following;
+}
+
+template<class T> Stack<T> Stack<T>::cutLast(uint16_t items) {
+  items %= size + 1;
+  if (!items) return Stack();
+  if (items == size) return Stack(move(*this));
+  StackNode* tempHead = head;                       //last node pf span always head
+  StackNode* tempTail = nodeByIndex(size - items);  //first node of span
+  head = tempTail->prev;                            //new head`
+  size -= items;
+  if (!size) tail = NULL;
+  return Stack(tempHead, tempTail, items);
+}
+template<class T> Stack<T> Stack<T>::cut(uint16_t from, uint16_t until) {
+  if (from >= size) return Stack();  //empty
+  if (until >= size) return cutLast(size - from);
+  auto tempHeadP = pointerToNodeByIndex(until - 1);  //pointer& to last node of span
+  StackNode* tempHead = tempHeadP;                   //assign value of pointer to tempHead
+  StackNode* tempTail = nodeByIndex(from);           //first node of span
+  tempHeadP = tempTail->prev;                        //collapse this stack chain
+  tempTail->prev = NULL;                             //disconnect cutten span
+  if (!from) tail = tempHeadP;                       //if from first item, tail tempTail->prev
+  uint16_t items = until - from;
+  size -= items;
+  return Stack(tempHead, tempTail, items);  //return Stack with cut chain
+}
+template<class T> Stack<T>& Stack<T>::append(Stack<T>&& other) {
+  if (!other.size) goto ret;
+  if (!size) {
+    *this = move(other);
+    goto ret;
+  }
+  other.tail->prev = head;  //conect head to other tail
+  head = other.head;        //take head;
+  size += other.size;       //add size
+  other.head = NULL;
+  other.tail = NULL;
+  other.size = 0;
+ret:
+  return *this;
+}
+template<class T> Stack<T>& Stack<T>::insert(Stack<T>&& other, uint16_t at) {
+  if (!other.size) goto ret;
+  if (!size) *this = move(other);
+  if (at >= size) append(move(other));
+  StackNode* afterNode = nodeByIndex(at);
+  other.tail->prev = afterNode.prev;  //connect other chain's tail
+  afterNode.prev = other.head;        //connect other chain's head
+  if (!at) tail = other.tail;         //reconnect tail if needed
+  size += other.size;                 //add size
+  other.tail = NULL;                  //empty
+  other.head = NULL;
+  other.size = 0;
+ret:
+  return *this;
 }
 //Stack<T>::StackIteratorForward
 template<class T> Stack<T>::StackIteratorForward::StackIteratorForward(StackNode* start) {
