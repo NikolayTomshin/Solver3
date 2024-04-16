@@ -135,7 +135,7 @@ template<class T> class ForwardIterator : public IIterator<T> {  //foreach eleme
 protected:
   uint16_t counter = 0;
 public:
-  const volatile uint16_t& getCounter() const {
+  uint16_t getCounter() const {
     return counter;
   }
   void skip(uint16_t items) {
@@ -148,7 +148,7 @@ public:
 };
 template<class T> class BiderectionalIterator : public ForwardIterator<T>, public IndexedCollection<T> {
 protected:
-  bool backwards;
+  bool backwards = false;
 
   virtual void evaluate() {}
 public:
@@ -184,7 +184,7 @@ protected:
 public:
   FunctionIterator(uint8_t limit, int8_t shift)
     : limit(limit), shift(shift) {}
-  uint16_t getSize() const override;
+  virtual uint16_t getSize() const override;
 
   virtual T& operator*() override;
   virtual const T& operator*() const override;
@@ -280,18 +280,20 @@ public:
   class ArrayIterator : public RandomAccessIterator<T> {
   protected:
     ArrayHandle<T> handle;
+    uint16_t size = 0;
+
     ArrayIterator(T* array, T* end, bool reverse)
       : handle(array, end) {
       size = handle.getSize();
       if (reverse) this->reverse();
+      setIndex(0);
     }
     virtual void evaluate() override {
       this->pointer = handle.array + this->counter;
     }
-    uint16_t size = 0;
   public:
     ArrayIterator(ArrayIterator&& other) = default;
-    uint16_t getSize() const {
+    virtual uint16_t getSize() const override {
       return size;
     }
     friend class Array<T>;
@@ -307,7 +309,9 @@ protected:
   }
 public:
   CollectionRandomAccessIterator(Array<T*>&& pointers)
-    : pointers(move(pointers)) {}
+    : pointers(move(pointers)) {
+    begin();
+  }
   virtual uint16_t getSize() const override {
     return pointers.getSize();
   }
@@ -340,7 +344,7 @@ protected:
   StackNode* nodeByIndex(uint16_t index) const;
   StackNode* unChainedNode(uint16_t index);
   template<class U> void insertNode(uint16_t index, U&& value);
-  StackNode*& pointerToNodeByIndex(uint16_t index) const;
+  StackNode*& pointerToNodeByIndex(uint16_t index);
 public:
   Stack() {}
   ~Stack();  //5
@@ -349,7 +353,7 @@ public:
   Stack& operator=(const Stack& other);
   Stack& operator=(Stack&& other);  ///5
 
-  uint16_t getSize() const override;
+  virtual uint16_t getSize() const override;
   void clear();
 
   const T& peek() const;
@@ -371,7 +375,7 @@ public:
   template<class U> void pushFromFront(U&& value, uint16_t skip);
   template<class U> void pushFromBack(U&& value, uint16_t skip);
 
-  void swap(uint16_t a, uint16_t b, bool fromTop);  //swap by index
+  void swapItems(uint16_t a, uint16_t b, bool fromTop);  //swap by index
   void reverse();
 
   class StackIteratorForward : public ForwardIterator<T> {
@@ -391,10 +395,13 @@ public:
     friend class Stack<T>;
   };  ///StackIteratorForward
   class StackIteratorRandom : public CollectionRandomAccessIterator<T> {
+  protected:
+    StackIteratorRandom(Array<T*>&& pointers)
+      : CollectionRandomAccessIterator<T>(move(pointers)) {}
     friend class Stack<T>;
   };
   StackIteratorForward iteratorForward() const;
-  StackIteratorRandom iteratorRandom() const;
+  StackIteratorRandom iteratorRandom(bool backwards = false) const;
 protected:
   Array<T*> arrayForRandomAccess() const;
 };  ///Stack
@@ -489,7 +496,7 @@ template<class T> const T& RandomAccessIterator<T>::operator*() const {
 //ArrayHandle<T>
 template<class T> ArrayHandle<T>::ArrayHandle(T array[], uint16_t size) {  //from existing dynamic array
   this->array = array;
-  end = array + size;
+  this->end = array + size;
 }
 template<class T> ArrayHandle<T>::ArrayHandle(uint16_t size)
   : ArrayHandle(new T[size], size) {}
@@ -497,7 +504,7 @@ template<class T> ArrayHandle<T>::ArrayHandle(const ArrayHandle& other) {
   *this = other;
 }
 template<class T> ArrayHandle<T>::ArrayHandle(ArrayHandle&& other) {
-  *this = other;
+  *this = move(other);
 }
 template<class T> ArrayHandle<T>& ArrayHandle<T>::operator=(const ArrayHandle& other) {  //copy assignment
   if (&other != this) {
@@ -519,7 +526,7 @@ template<class T> uint16_t ArrayHandle<T>::getSize() const {
 ///ArrayHandle<T>
 //Array<T>
 template<class T> typename Array<T>::ArrayIterator Array<T>::iterator(uint16_t skip, uint16_t keep, bool reverse) {
-  ArrayIterator aI(this->handle.array + skip, this->handle.end - keep, reverse);
+  return ArrayIterator(this->handle.array + skip, this->handle.end - keep, reverse);
 }
 ///Array<T>
 //Stack<T>
@@ -537,13 +544,15 @@ template<class T> typename Stack<T>::StackNode* Stack<T>::unChainedNode(uint16_t
   StackNode* after = nodeByIndex(index + 1);
   StackNode* selected = after->prev;
   after->prev = selected->prev;
+  --size;
   return selected;
 }
 template<class T> template<class U> void Stack<T>::insertNode(uint16_t index, U&& value) {
   StackNode* after = nodeByIndex(index);
   after->prev = new StackNode(after->prev, forward<U>(value));
+  ++size;
 }
-template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndex(uint16_t index) const {
+template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndex(uint16_t index) {
   index %= size;
   if (index == (size - 1)) return head;
   return nodeByIndex(index + 1)->prev;
@@ -555,7 +564,7 @@ template<class T> Stack<T>::Stack(const Stack<T>& other) {
   *this = other;
 }
 template<class T> Stack<T>::Stack(Stack<T>&& other) {
-  *this = other;
+  *this = move(other);
 }
 template<class T> Stack<T>& Stack<T>::operator=(const Stack<T>& other) {
   if (this != &other) {
@@ -603,19 +612,20 @@ template<class T> T Stack<T>::pop() {
     if (!size) tail = NULL;
     return temp->pop();
   }
-  // poutN(F("Stack is empty can't pop"));
+  poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popBack() {
   if (size) {
     StackNode* temp = tail;
     tail = nodeByIndex(1);
-    if (--size)
+    --size;
+    if (size)
       tail->prev = NULL;
     else
       head = NULL;
     return temp->pop();
   }
-  //poutN(F("Stack is empty can't pop"));
+  poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popFromFront(uint16_t skip) {
   skip %= size;
@@ -643,23 +653,24 @@ template<class T> template<class U> void Stack<T>::push(U&& value) {
 }
 template<class T> template<class U> void Stack<T>::pushBack(U&& value) {
   if (!size) return push(forward<U>(value));
-  tail = (tail->prev = new StackNode(tail, forward<U>(value)));
+  StackNode* temp = new StackNode(NULL, forward<U>(value));
+  tail->prev = temp;
+  tail = temp;
   ++size;
 }
 template<class T> template<class U> void Stack<T>::pushFromFront(U&& value, uint16_t skip) {
-  skip %= size;
-  const uint16_t maxIndex = size - 1;
+  skip %= (size + 1);
   if (!skip) return push(forward<U>(value));
-  if (skip == maxIndex) return pushBack(forward<U>(value));
-  if (size) return insertNode(forward<U>(value), maxIndex - skip);
+  if (skip == size) return pushBack(forward<U>(value));
+  if (size) return insertNode(size - skip, forward<U>(value));
 }
 template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint16_t skip) {
-  skip %= size;
+  skip %= (size + 1);
   if (!skip) return pushBack(forward<U>(value));
-  if (skip == (size - 1)) return push(forward<U>(value));
-  if (size) return insertNode(forward<U>(value), skip);
+  if (skip == size) return push(forward<U>(value));
+  if (size) return insertNode(skip, forward<U>(value));
 }
-template<class T> void Stack<T>::swap(uint16_t a, uint16_t b, bool fromTop) {
+template<class T> void Stack<T>::swapItems(uint16_t a, uint16_t b, bool fromTop) {
   if (size < 2) return;
   a %= size;
   b %= size;
@@ -703,15 +714,19 @@ template<class T> const T& Stack<T>::StackIteratorForward::operator*() const {
   return currentNode->value;
 }
 template<class T> ForwardIterator<T>& Stack<T>::StackIteratorForward::operator++() {
-  if (notEnd())
+  if (notEnd()) {
     currentNode = currentNode->prev;
+    ++(this->counter);
+  }
   return *this;
 }
 template<class T> typename Stack<T>::StackIteratorForward Stack<T>::iteratorForward() const {
   return StackIteratorForward(this->head);
 }
-template<class T> typename Stack<T>::StackIteratorRandom Stack<T>::iteratorRandom() const {
-  return StackIteratorRandom(move(arrayForRandomAccess()));
+template<class T> typename Stack<T>::StackIteratorRandom Stack<T>::iteratorRandom(bool backwards) const {
+  auto it = StackIteratorRandom(move(arrayForRandomAccess()));
+  if (backwards) it.begin(true);
+  return it;
 }
 template<class T> Array<T*> Stack<T>::arrayForRandomAccess() const {
   Array<T*> ptrs = Array<T*>(size);

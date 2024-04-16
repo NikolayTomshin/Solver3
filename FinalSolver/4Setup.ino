@@ -69,12 +69,19 @@ void setup() {
   s.push(1);
   s.push(2);
   s.push(3);
-  {
-    auto it = s.iteratorRandom();
-    it.begin(true);
-    for (; it.notEnd(); ++it)
-      Serial.println(*it);
+  s.reverse();
+  for (uint8_t i = 1; i < 2; ++i) {
+    s.swapItems(0,i,false);
+    {
+      auto it = s.iteratorRandom(true);
+      for (; it.notEnd(); ++it) {
+        Serial.println(*it);
+      }
+    }
+    Serial.print('\t');
+    Serial.println(i);
   }
+
   return;
   Serial.println(F("Start"));
   pcm.setCommandSet(pcSet());  //set pc commandSet
