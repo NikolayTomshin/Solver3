@@ -28,6 +28,10 @@ uint16_t indexOfSkipping(const String& string, uint16_t startingIndex, const Str
 template<class T> T minMax(T a, T b, bool max);
 template<class T> T assignSign(bool positive, T argument);
 template<class T> T flipSign(bool flip, const T& argument);
+template<class T> T uLimit(T value, const T& limit);
+template<class T> T uLimitStrict(T value, const T& limit);
+template<class T> bool uLimited(T& value, const T& limit);
+template<class T> bool uLimitedStrict(T& value, const T& limit);
 template<class T> T limits(T value, T limit, bool upperLimit = true);
 template<class T> T doubleLimits(T value, T lLimit, T uLimit);
 template<class T> T absLimits(T value, T limit, bool upperLimit = true);
@@ -384,7 +388,7 @@ public:
   Stack<T> cutLast(uint16_t items);
   Stack<T> cut(uint16_t from, uint16_t until);
   Stack<T>& append(Stack<T>&& other);
-  Stack<T>& insert(Stack<T>&& other, uint16_t at);
+  Stack<T>& insertAt(Stack<T>&& other, uint16_t at);
 
   class StackIteratorForward : public ForwardIterator<T> {
   protected:
@@ -562,7 +566,7 @@ template<class T> template<class U> void Stack<T>::insertNode(uint16_t index, U&
   ++size;
 }
 template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndex(uint16_t index) {
-  index %= size;
+  uLimitedStrict(index, size);
   if (index == (size - 1)) return head;
   return nodeByIndex(index + 1)->prev;
 }
@@ -637,7 +641,7 @@ template<class T> T Stack<T>::popBack() {
   poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popFromFront(uint16_t skip) {
-  skip %= size;
+  uLimitedStrict(skip, size);
   const uint16_t maxIndex = size - 1;
   if (!skip) return pop();
   if (skip == maxIndex) return popBack();
@@ -647,7 +651,7 @@ template<class T> T Stack<T>::popFromFront(uint16_t skip) {
   //poutN(F("Stack is empty can't pop"));
 }
 template<class T> T Stack<T>::popFromBack(uint16_t skip) {
-  skip %= size;
+  uLimitedStrict(skip, size);
   if (!skip) return popBack();
   if (skip == size - 1) return pop();
   if (size) {
@@ -668,13 +672,13 @@ template<class T> template<class U> void Stack<T>::pushBack(U&& value) {
   ++size;
 }
 template<class T> template<class U> void Stack<T>::pushFromFront(U&& value, uint16_t skip) {
-  skip %= (size + 1);
+  uLimited(skip, size);
   if (!skip) return push(forward<U>(value));
   if (skip == size) return pushBack(forward<U>(value));
   if (size) return insertNode(size - skip, forward<U>(value));
 }
 template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint16_t skip) {
-  skip %= (size + 1);
+  uLimited(skip, size);
   if (!skip) return pushBack(forward<U>(value));
   if (skip == size) return push(forward<U>(value));
   if (size) return insertNode(skip, forward<U>(value));
@@ -682,15 +686,14 @@ template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint1
 template<class T> void Stack<T>::swapItems(uint16_t a, uint16_t b, bool fromTop) {
   if (a == b) return;
   if (size < 2) return;
-  a %= size;
-  b %= size;
+  uLimitedStrict(a, size);
+  uLimitedStrict(b, size);
   if (fromTop) {
     a = mirrorValueOnRange<uint16_t>(0, a, size);
     b = mirrorValueOnRange<uint16_t>(0, b, size);
   }
-  //a, b -different indexes
-  auto aP = pointerToNodeByIndex(a);
-  auto bP = pointerToNodeByIndex(b);
+  StackNode*& aP = pointerToNodeByIndex(a);
+  StackNode*& bP = pointerToNodeByIndex(b);
   if (!a) tail = bP;         //if a is the first point tail to b
   else if (!b) tail = aP;    //if b is the first point tail to a
   swap(aP, bP);              //swap forward pointers to nodes
@@ -711,7 +714,7 @@ template<class T> void Stack<T>::reverse() {
 }
 
 template<class T> Stack<T> Stack<T>::cutLast(uint16_t items) {
-  items %= size + 1;
+  uLimited(items, size);
   if (!items) return Stack();
   if (items == size) return Stack(move(*this));
   StackNode* tempHead = head;                       //last node pf span always head
@@ -724,12 +727,12 @@ template<class T> Stack<T> Stack<T>::cutLast(uint16_t items) {
 template<class T> Stack<T> Stack<T>::cut(uint16_t from, uint16_t until) {
   if (from >= size) return Stack();  //empty
   if (until >= size) return cutLast(size - from);
-  auto tempHeadP = pointerToNodeByIndex(until - 1);  //pointer& to last node of span
-  StackNode* tempHead = tempHeadP;                   //assign value of pointer to tempHead
-  StackNode* tempTail = nodeByIndex(from);           //first node of span
-  tempHeadP = tempTail->prev;                        //collapse this stack chain
-  tempTail->prev = NULL;                             //disconnect cutten span
-  if (!from) tail = tempHeadP;                       //if from first item, tail tempTail->prev
+  StackNode*& tempHeadP = pointerToNodeByIndex(until - 1);  //pointer& to last node of span
+  StackNode* tempHead = tempHeadP;                          //assign value of pointer to tempHead
+  StackNode* tempTail = nodeByIndex(from);                  //first node of span
+  tempHeadP = tempTail->prev;                               //collapse this stack chain
+  tempTail->prev = NULL;                                    //disconnect cutten span
+  if (!from) tail = tempHeadP;                              //if from first item, tail tempTail->prev
   uint16_t items = until - from;
   size -= items;
   return Stack(tempHead, tempTail, items);  //return Stack with cut chain
@@ -749,16 +752,16 @@ template<class T> Stack<T>& Stack<T>::append(Stack<T>&& other) {
 ret:
   return *this;
 }
-template<class T> Stack<T>& Stack<T>::insert(Stack<T>&& other, uint16_t at) {
+template<class T> Stack<T>& Stack<T>::insertAt(Stack<T>&& other, uint16_t at) {
   if (!other.size) goto ret;
   if (!size) *this = move(other);
   if (at >= size) append(move(other));
   StackNode* afterNode = nodeByIndex(at);
-  other.tail->prev = afterNode.prev;  //connect other chain's tail
-  afterNode.prev = other.head;        //connect other chain's head
-  if (!at) tail = other.tail;         //reconnect tail if needed
-  size += other.size;                 //add size
-  other.tail = NULL;                  //empty
+  other.tail->prev = afterNode->prev;  //connect other chain's tail
+  afterNode->prev = other.head;        //connect other chain's head
+  if (!at) tail = other.tail;          //reconnect tail if needed
+  size += other.size;                  //add size
+  other.tail = NULL;                   //empty
   other.head = NULL;
   other.size = 0;
 ret:
@@ -813,6 +816,24 @@ template<class T> T assignSign(bool positive, T argument) {
 }
 template<class T> T flipSign(bool flip, const T& argument) {
   return flip ? -argument : argument;
+}
+template<class T> T template<class T> T uLimit(T value, T limit) {
+  if (value > limit) return limit;
+  return value;
+}
+template<class T> T uLimitStrict(T value, const T& limit) {
+  if (value >= limit) return limit - 1;
+  return value;
+}
+template<class T> bool uLimited(T& value, const T& limit) {
+  if (value <= limit) return false;
+  value = limit;
+  return true;
+}
+template<class T> bool uLimitedStrict(T& value, const T& limit) {
+  if (value < limit) return false;
+  value = limit - 1;
+  return true;
 }
 template<class T> T limits(T value, T limit, bool upperLimit = true) {
   if ((value > limit) == upperLimit) {
