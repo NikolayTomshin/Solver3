@@ -107,7 +107,7 @@ public:
   bool ready() const override;
 };
 
-class LinChase : public IReady, public IUpdatable {  //Linear chase
+class LinChase : public IReady {  //, public IUpdatable {  //Linear chase
   /*Model of point chasing target with const speed in real time.
     Usefull to predict when something real arrives when moving similarly*/
   bool underTarget = false;  //is position less than target
@@ -125,7 +125,7 @@ public:
   void assumeDirection();
   void teleport(float place);
   void go(int16_t position);
-  void update() override;
+  void update() ;
   bool ready() const override;
 };
 
@@ -139,7 +139,7 @@ public:
 const uint8_t colorLag = 5;
 
 class RobotMotorics;
-class ClawUnit : public IUpdatable, public IConfigurable {  //class for claw module control//ClawUnit//ClawUnit//ClawUnit//ClawUnit//ClawUnit//ClawUnit
+class ClawUnit : /*public IUpdatable,*/ public IConfigurable {  //class for claw module control//ClawUnit//ClawUnit//ClawUnit//ClawUnit//ClawUnit//ClawUnit
 protected:
   uint8_t mD, mP, eA, eB, sC;     //Pins
   bool reverseDirection = false;  //reverse direction
@@ -246,7 +246,7 @@ protected:
 
   void orientationUpdate();
   void chase();
-  void update() override;
+  void update() ;
 
 public:
   void assumeRotation();
@@ -272,8 +272,8 @@ void setLed(bool on);
 
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
-class Scanner : public IReady, public IUpdatable {
-  Cs scannerCs = Cs(0, 4, 2);  //z-смотрит от куба, y от клешни сканера, x совпадает с x
+class Scanner : public IReady {  //, public IUpdatable {
+  Cs scannerCs = Cs(0, 4, 2);    //z-смотрит от куба, y от клешни сканера, x совпадает с x
 public:
   Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
   MyServo servo;
@@ -288,7 +288,7 @@ public:
   void goAngle(uint8_t degrees);
   void goPosition(uint8_t _position);
   bool ready() const override;
-  void update() override;
+  void update() ;
   void snap(Color& color);
 
   friend class RobotMotorics;
@@ -334,7 +334,7 @@ public:
 // #define MotoricsDebug
 
 #define DISCOCLAW false  //left
-class RobotMotorics : public IUpdatable, public IConfigurable {
+class RobotMotorics : /*public IUpdatable,*/ public IConfigurable {
 protected:
   int8_t cubeSizeDelta;
   int8_t x = 0, y = 0;  //current state
@@ -368,10 +368,10 @@ public:
   void initialize();
   void initializeSettings();  //set values of all hardware
   void initializeHardware();  //
-  
+
   void allignBoth();  //rotate claws to default state
 
-  void update() override;  //update of hardware
+  void update() ;  //update of hardware
 
   ClawUnit& getClaw(bool right);       //get claw reference
   Axis getClawAxis(bool right) const;  //get axis of claw

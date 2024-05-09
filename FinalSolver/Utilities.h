@@ -28,7 +28,7 @@ uint16_t indexOfSkipping(const String& string, uint16_t startingIndex, const Str
 template<class T> T minMax(T a, T b, bool max);
 template<class T> T assignSign(bool positive, T argument);
 template<class T> T flipSign(bool flip, const T& argument);
-template<class T> T uLimit(T value, const T& limit);
+template<class T> T uLimit(const T& value, const T& limit);
 template<class T> T uLimitStrict(T value, const T& limit);
 template<class T> bool uLimited(T& value, const T& limit);
 template<class T> bool uLimitedStrict(T& value, const T& limit);
@@ -47,6 +47,10 @@ template<class T> int16_t indexOfcondition(T array[], uint8_t size, T sample, bo
 template<class T> void valuesMergeSort(T array[], const uint8_t size, bool ascending = true);
 template<class T, class V> void sortBy(T property[], V objects[], const uint8_t size, bool ascending);
 
+template<class T> bool inSpan(const T& a, const T& value, const T& b);
+template<class T> bool inSpanStrict(const T& a, const T& value, const T& b);
+template<class T> bool inSpanLStrict(const T& a, const T& value, const T& b);
+template<class T> bool inSpanRStrict(const T& a, const T& value, const T& b);
 template<class T> bool inMargin(const T& value, const T& target, const T& epsilon);
 uint8_t arcQuarter(int8_t x, int8_t y);
 
@@ -55,7 +59,18 @@ template<class T> bool sort(T& a, T& b, bool ascending);
 
 template<class T> T& getRef(void* ptr);
 template<class T> const T& getConstRef(const void* ptr);
+template<class T> constexpr nulPtr() noexcept;
 
+template<class T> void delNull(T*& ptr);
+template<class T> void takeNull(T*& ptr);
+
+
+template<class T> struct _Remove_const {
+  typedef T _type;
+};
+template<class T> struct _Remove_const<const T> {
+  typedef T _type;
+};
 //move semantics
 template<class T>
 struct _Remove_reference {  // remove reference
@@ -82,52 +97,43 @@ constexpr const T& as_const(T& t) noexcept {
   return t;
 }
 ///move semantics
-
-//collections
-template<class T> class KPtr {  //unique pointer
+//"Smart" "pointers"
+template<class T> class SPtr {
 protected:
   T* ptr = NULL;
 public:
-  KPtr()
-    : ptr(NULL) {}
-  KPtr(T* ptr) {
-    this->ptr = ptr;
+  SPtr() {}
+  SPtr(T* ptr)
+    : ptr(ptr) {}
+  SPtr(const SPtr& other) {
+    ptr = new T(*other.ptr);
   }
-  KPtr(KPtr&& other) {
-    swap(this->prt, other.ptr);
-    if (this->ptr == ptr)
-      other.prt = NULL;
+  SPtr(SPtr&& other) {
+    swap(ptr, other.ptr);
   }
-  ~KPtr() {
-    delete ptr;
-  }
-  KPtr& operator=(KPtr&& other) {
-    swap(this->ptr, other.ptr);
+  SPtr& operator=(const SPtr& other) {
+    ptr = new T(*other.ptr);
     return *this;
   }
-  T* operator->() const {
-    return ptr;
+  SPtr& operator=(SPtr&& other) {
+    swap(ptr, other.ptr);
+    return *this;
   }
-  T* release() {
-    T* temp = ptr;
-    ptr = NULL;
-    return temp;
+  ~SPtr() {
+    delete ptr;
   }
-  T& operator*() const {
+  T& operator*() {
     return *ptr;
   }
+  T* operator->() {
+    return ptr;
+  }
+  T* take() {
+    return takeNull(ptr);
+  }
 };
+///"Smart" "pointers"
 //Collections
-class ICollection {  //collection contains number of items
-public:
-  virtual uint16_t getSize() const = 0;  //collection always have number of items
-  virtual ~ICollection() {}
-};
-template<class T> class IndexedCollection : public ICollection {  //indexed collection allow access to elements by index
-public:
-  virtual T& operator[](uint16_t index) = 0;
-  virtual const T& operator[](uint16_t index) const = 0;
-};
 template<class T> class IIterator {  //iterator can reach end and be dereferenced
 public:
   virtual bool notEnd() const = 0;
@@ -135,7 +141,9 @@ public:
   virtual T& operator*() = 0;
   virtual const T& operator*() const = 0;
 };
-template<class T> class ForwardIterator : public IIterator<T> {  //foreach element of collection
+template<class T> class IForwardIterator : public IIterator<T> {
+};
+template<class T> class ForwardIterator : public IForwardIterator<T> {  //foreach element of collection
 protected:
   uint16_t counter = 0;
 public:
@@ -150,7 +158,55 @@ public:
   }
   virtual ForwardIterator& operator++() = 0;
 };
-template<class T> class BiderectionalIterator : public ForwardIterator<T>, public IndexedCollection<T> {
+
+//Collections interfaces
+template<class T> class ICollection {  //collection contains number of items
+public:
+  virtual uint16_t getSize() const = 0;  //collection always have number of items
+  virtual ~ICollection() {}
+};
+template<class T> class OrderedRead {
+public:
+  virtual const T& itemAt(uint16_t index) const = 0;
+  virtual const T& itemLast(uint16_t index) const = 0;
+};
+template<class T> class OrderedWrite {
+public:
+  virtual T& itemAt(uint16_t index) = 0;
+  virtual T& itemLast(uint16_t index) = 0;
+};
+template<class T> class OrderedCollection : public OrderedRead<T>, public OrderedWrite<T>, public ICollection<T> {};
+
+template<class T> class RandomRead {
+public:
+  virtual const T& operator[](uint16_t index) const = 0;
+};
+template<class T> class RandomWrite {
+public:
+  virtual T& operator[](uint16_t index) = 0;
+};
+template<class T> class RandomAccess : public RandomRead<T>, public RandomWrite<T> {};
+
+template<class T> class RandomCollectionRead : public OrderedRead<T>, public RandomRead<T>, public ICollection<T> {
+public:
+  virtual const T& itemAt(uint16_t index) const override final {
+    return this->operator[](index);
+  }
+  virtual const T& itemLast(uint16_t index) const override final {
+    return this->operator[](this->getSize() - index - 1);
+  }
+};
+template<class T> class RandomCollection : public RandomCollectionRead<T>, public RandomWrite<T>, public OrderedWrite<T> {
+  virtual T& itemAt(uint16_t index) override final {
+    return this->operator[](index);
+  }
+  virtual T& itemLast(uint16_t index) override final {
+    return this->operator[](this->getSize() - index - 1);
+  }
+};
+
+///Collections interfaces
+template<class T> class BiderectionalIterator : public ForwardIterator<T> {
 protected:
   bool backwards = false;
 
@@ -165,12 +221,18 @@ public:
   BiderectionalIterator& operator--();
   BiderectionalIterator& begin(bool backwards = false);
 
-  virtual T& operator[](uint16_t index) override;
-  virtual const T& operator[](uint16_t index) const override;
+  bool goToItemNotEnd(uint16_t index);
+  //virtual const T& operator[](uint16_t index) = 0;
 };
 template<class F> struct Func;  //single Arg function template declaration
 template<class R, class... Args> struct Func<R(Args...)> {
   using t = R (*)(Args...);
+};
+
+template<class T> class RandomAccessIterator : public BiderectionalIterator<T>, public RandomAccess<T> {  //fast access by index
+public:
+  virtual T& operator[](uint16_t index) = 0;
+  virtual const T& operator[](uint16_t index) const = 0;
 };
 
 template<class T> class FunctionIterator : public BiderectionalIterator<T> {
@@ -216,14 +278,8 @@ public:
   InternalFunctionIterator(uint8_t limit, int8_t shift = 0)
     : FunctionIterator<T>(limit, shift) {}
 };
-template<class T> class RandomAccessIterator : public BiderectionalIterator<T> {  //fast access by index
-protected:
-  T* pointer = NULL;
-public:
-  virtual T& operator*() override;
-  virtual const T& operator*() const override;
-};
-template<class T> struct ArrayHandle : public ICollection {  //Control dynamic array<T>
+
+template<class T> struct ArrayHandle {  //Control dynamic array<T>
   T* array = NULL;
   T* end = NULL;
 
@@ -237,7 +293,7 @@ template<class T> struct ArrayHandle : public ICollection {  //Control dynamic a
   ArrayHandle& operator=(const ArrayHandle& other);
   ArrayHandle& operator=(ArrayHandle&& other);  ///5
 
-  virtual uint16_t getSize() const override;
+  uint16_t getSize() const;
 
   void destroy() {
     delete[] array;
@@ -245,7 +301,8 @@ template<class T> struct ArrayHandle : public ICollection {  //Control dynamic a
     end = NULL;
   }
 };
-template<class T> class Array : IndexedCollection<T> {  //simple array
+template<class T> class Array /*: RandomCollection<T>*/ {  //simple array
+protected:
   ArrayHandle<T> handle;
 public:
   Array() {}
@@ -263,8 +320,7 @@ public:
   Array& operator=(const Array& other) = default;
   Array& operator=(Array&& other) = default;  ///5
 
-
-  virtual uint16_t getSize() const override {
+  uint16_t getSize() const {
     return handle.getSize();
   }
   T& last(uint16_t skip = 0) {
@@ -275,10 +331,10 @@ public:
     return *(this->handle.end - 1 - skip);
   }
 
-  virtual T& operator[](uint16_t index) {
+  T& operator[](uint16_t index) {
     return this->handle.array[index];
   }
-  virtual const T& operator[](uint16_t index) const {
+  const T& operator[](uint16_t index) const {
     return this->handle.array[index];
   }
   class ArrayIterator : public RandomAccessIterator<T> {
@@ -300,11 +356,62 @@ public:
     virtual uint16_t getSize() const override {
       return size;
     }
+    T& operator*() {
+      return handle.array[this->counter];
+    }
+    const T& operator*() const {
+      return handle.array[this->counter];
+    }
+    virtual T& operator[](uint16_t index) override {
+      return this->handle.array[index];
+    }
+    virtual const T& operator[](uint16_t index) const override {
+      return this->handle.array[index];
+    }
     friend class Array<T>;
   };
+
   ArrayIterator iterator(uint16_t skip = 0, uint16_t keep = 0, bool reverse = false);
 };
-///ArrayIterator
+
+template<class T> class PointerArray : public Array<T*> {
+protected:
+  void nullify() {
+    T** end = this->handle.end;
+    for (T** it = this->handle.array; it < end; ++it)
+      *it = NULL;
+  }
+public:
+  void erase() {
+    T** end = this->handle.end;
+    for (T** it = this->handle.array; it < end; ++it)
+      delNull(*it);
+  }
+  T* take(uint16_t index) {
+    T*& selected = operator[](index);
+    T* temp = selected;
+    selected = NULL;
+    return temp;
+  }
+  PointerArray() {}
+  PointerArray(T* array[], uint16_t size)
+    : Array<T*>(array, size) {
+    nullify();
+  }
+  PointerArray(uint16_t size)
+    : Array<T*>(size) {
+    nullify();
+  }
+  ~PointerArray() {
+    erase();
+  }  //5
+  PointerArray(const PointerArray& other)
+    : Array<T*>(other) {}
+  PointerArray(PointerArray&& other)
+    : Array<T*>(move(other)) {}
+  using Array<T*>::operator=;
+};
+///Array
 template<class T> class CollectionRandomAccessIterator : public RandomAccessIterator<T> {
 protected:
   Array<T*> pointers;
@@ -316,18 +423,18 @@ public:
     : pointers(move(pointers)) {
     begin();
   }
-  virtual uint16_t getSize() const override {
+  uint16_t getSize() const  {
     return pointers.getSize();
   }
 };
 //Stack
-template<class T>
-class Stack : public IndexedCollection<T> {
+template<class T> class StackIteratorRandomIO;
+template<class T> class Stack /*: public OrderedCollection<T>*/ {
 protected:
-  class StackNode {
-  public:
+  struct StackNode {
     T value;
     StackNode* prev = NULL;
+
     template<class U> StackNode(StackNode* previous, U&& value) {  //universal reference
       this->value = forward<U>(value);
       prev = previous;
@@ -341,14 +448,23 @@ protected:
       return temp;
     }
   };
+
   StackNode* head = NULL;  //head<- push
   StackNode* tail = NULL;  //tail<- pushback
   uint16_t size = 0;
 
   StackNode* nodeByIndex(uint16_t index) const;
+  StackNode* nodeByIndexTop(uint16_t skip) const;
+
+  StackNode* unChained(StackNode* after);
   StackNode* unChainedNode(uint16_t index);
+  StackNode* unChainedNodeFront(uint16_t skip);
+
   template<class U> void insertNode(uint16_t index, U&& value);
+  template<class U> void insertNodeFront(uint16_t skip, U&& value);
+
   StackNode*& pointerToNodeByIndex(uint16_t index);
+  StackNode*& pointerToNodeByIndexTop(uint16_t skip);
 
   Stack(StackNode* head, StackNode* tail, uint16_t size)
     : head(head), tail(tail), size(size) {}
@@ -360,22 +476,19 @@ public:
   Stack& operator=(const Stack& other);
   Stack& operator=(Stack&& other);  ///5
 
-  virtual uint16_t getSize() const override;
+  uint16_t getSize() const;
   void clear();
 
   const T& peek() const;
   const T& peekBack() const;
 
-  T& item(uint8_t index = 0);
-  T& itemBack(uint8_t index = 0);
-
-  virtual T& operator[](uint16_t index) override;
-  virtual const T& operator[](uint16_t index) const override;
+  T& itemAt(uint16_t index = 0);
+  T& itemLast(uint16_t index = 0);
 
   T pop();  //normal pop
   T popBack();
   T popFromFront(uint16_t skip);
-  T popFromBack(uint16_t skip);
+  T popFromBack(uint16_t index);
 
   template<class U> void push(U&& value);
   template<class U> void pushBack(U&& value);
@@ -385,38 +498,343 @@ public:
   void swapItems(uint16_t a, uint16_t b, bool fromTop);  //swap by index
   void reverse();
 
-  Stack<T> cutLast(uint16_t items);
+  Stack<T> cutLast(uint16_t items);  //from top
   Stack<T> cut(uint16_t from, uint16_t until);
   Stack<T>& append(Stack<T>&& other);
   Stack<T>& insertAt(Stack<T>&& other, uint16_t at);
 
   class StackIteratorForward : public ForwardIterator<T> {
   protected:
-    StackNode* currentNode;
+    Stack* myStack = NULL;
+    StackNode* currentNode = NULL;
+
+    virtual void reverseIf() {
+      if (myStack != NULL) myStack->reverse();
+    }
+    StackIteratorForward() {}
   public:
     StackIteratorForward(StackIteratorForward&& other)
-      : currentNode(other.currentNode) {}
-    StackIteratorForward(StackNode* start);
-
+      : currentNode(other.currentNode), myStack(other.myStack) {}
+    StackIteratorForward(StackNode* start, Stack* myStack = NULL)
+      : currentNode(start), myStack(myStack) {
+      reverseIf();  //first reverse
+    }
+    virtual ~StackIteratorForward() {
+      reverseIf();  //second reverse
+    }
     virtual bool notEnd() const override;
 
     virtual T& operator*() override;
     virtual const T& operator*() const override;
     virtual ForwardIterator<T>& operator++() override;
 
+    void skip(uint16_t items) {
+      uLimited(items, myStack->size - this->counter);
+      if (items)
+        ForwardIterator<T>::skip(items);
+    }
     friend class Stack<T>;
   };  ///StackIteratorForward
+  class StackIteratorForwardIO : public StackIteratorForward {
+  protected:
+    bool reverse = false;
+    StackNode** pointerToCurrentNode = NULL;
+
+    virtual void reverseIf() override {
+      if (reverse) this->myStack->reverse();
+    }
+  public:
+    StackIteratorForwardIO(StackIteratorForwardIO&& other)
+      : StackIteratorForward(move(other)), pointerToCurrentNode(other.pointerToCurrentNode), reverse(other.reverse) {}
+    StackIteratorForwardIO(Stack& myStack, bool reverse = false)
+      : StackIteratorForward(myStack.head, &myStack), reverse(reverse), pointerToCurrentNode(&(myStack.pointerToNodeByIndexTop(0))) {}
+
+    virtual ForwardIterator<T>& operator++() override;
+
+    T pop();  //pop current
+    T popOffset(int16_t offset);
+
+    T popFront();  //normal pop
+    T popBack();
+    T popFromFront(uint16_t skip);
+    T popFromBack(uint16_t index);
+
+    template<class U> void push(U&& value);
+    template<class U> void pushOffset(U&& value, int16_t offset);
+
+    template<class U> void pushFront(U&& value);
+    template<class U> void pushBack(U&& value);
+    template<class U> void pushFromFront(U&& value, uint16_t skip);
+    template<class U> void pushFromBack(U&& value, uint16_t skip);
+
+    Stack<T> cutLast(uint16_t items);
+
+    Stack<T> cutNext(uint16_t items, bool inclusive);
+    Stack<T> cutPrevios(uint16_t items, bool inclusive);
+    Stack<T> cutLocal(int16_t from, int16_t until);
+
+    Stack<T> cut(uint16_t from, uint16_t until);
+    Stack<T>& append(Stack<T>&& other);
+    Stack<T>& insertAt(Stack<T>&& other, uint16_t at);
+    Stack<T>& insertAtLocal(Stack<T>&& other, uint16_t at);
+
+    friend class Stack<T>;
+  };
   class StackIteratorRandom : public CollectionRandomAccessIterator<T> {
   protected:
     StackIteratorRandom(Array<T*>&& pointers)
       : CollectionRandomAccessIterator<T>(move(pointers)) {}
     friend class Stack<T>;
   };
-  StackIteratorForward iteratorForward() const;
+
+  StackIteratorForward iteratorForward(bool reverse = false, uint16_t skip = 0);
+  StackIteratorForwardIO iteratorForwardIO(bool reverse = false, uint16_t skip = 0);
   StackIteratorRandom iteratorRandom(bool backwards = false) const;
+  StackIteratorRandomIO<T> iteratorRandomIO(bool backwards = false) const;
 protected:
   Array<T*> arrayForRandomAccess() const;
+
+  friend class StackIteratorForwardIO;
+  friend class StackIteratorRandom;
+  friend class StackIteratorRandomIO<T>;
 };  ///Stack
+template<class T> class PointerStack : public Stack<SPtr<T>> {
+public:
+  using Stack<SPtr<T>>::Stack;
+};
+/*
+Representation is an ordered collection of read only elements
+template <class T> Rep : ICollection {
+  virtual T operator[](uint16_t index) const;
+};
+where T may be (const T&) (derive from IndexedCollectionRead<T>) or value T
+Representation is to already existing or internal data.
+*/
+
+template<class TRepresentation, class TThisIterator>
+class RepresentationIterator {  //Representation iterator template
+protected:
+  TRepresentation* const rep;
+  uint16_t index = 0;
+  uint16_t limit = 0;
+  bool reverse = false;
+
+public:
+  RepresentationIterator(const TRepresentation& rep)
+    : rep(&rep), limit(rep.getSize()) {}
+  TThisIterator begin(bool backwards = false, uint16_t index = 0, bool reverse = false) {
+    uLimitedStrict(index, limit);
+    this->index = backwards ? mirrorValueOnRange<uint16_t>(0, index, limit) : index;
+    this->reverse = reverse;
+    TThisIterator::evaluate();
+    return *this;
+  }
+  TThisIterator& operator++() {
+    return operator+=(1);
+  }
+  TThisIterator& operator--() {
+    return operator+=(-1);
+  }
+  TThisIterator& operator+=(int16_t delta) {
+    if (reverse) delta = -delta;
+    index += delta;
+    TThisIterator::evaluate();
+    return *this;
+  }
+  bool notEnd() const {
+    return index < limit;
+  }
+};
+template<class T> struct _Class {  //struct for inheriting and using all constructors
+  class _Constructors : public T {
+    using T::T;
+  };
+};
+//Reps
+template<class T> struct IRepresentation {  //representation has type of subscript return
+  typedef T ReturnType;
+  typedef typename _Remove_const<typename _Remove_reference<T>::_noRef>::_Type _Type;  //
+  virtual ~IRepresentation() = 0;
+};
+template<class T> class RefRep : public OrderedCollection<T>, public IRepresentation<const T&> {  //Representation by reference
+public:
+  class ReadIterator : public _Class<RepresentationIterator<RefRep<T>, ReadIterator>>::_Constructors {
+  protected:
+    T* const pointer;
+
+    void evaluate() {
+      pointer = &*(this->rep)[this->index];
+    }
+  public:
+    const T& operator*() const {
+      return *pointer;
+    }
+  };
+  ReadIterator iteratorRead() const {
+    return ReadIterator(*this);
+  }
+};
+template<class T> class ValRep : public IRepresentation<T> {  //Representation by value
+public:
+  class ReadIterator : public _Class<RepresentationIterator<ValRep<T>, ReadIterator>>::_Constructors {
+  protected:
+    T value;
+
+    void evaluate() {
+      value = (*this->rep)[this->index];
+    }
+  public:
+    T operator*() const {
+      return value;
+    }
+  };
+  virtual T itemAt(uint16_t index) const = 0;  //function
+  ReadIterator iteratorV() const {
+    return ReadIterator(*this);
+  }
+};
+///Reps
+template<class TRepresentation> class SpanRep : public TRepresentation {  //Representation that references another representation
+private:
+  TRepresentation* rep;
+  uint16_t from;
+  uint16_t until;
+public:
+  SpanRep(const volatile TRepresentation& rep, uint16_t from, uint16_t until = 0xFFFF)
+    : rep(&rep) {
+    uLimited(until, rep.getSize());  //max until = size
+    this->until = until;
+    this->from = uLimitStrict(from, until);  //from is less then until
+  }
+  TRepresentation* sourcePtr() const;
+  uint16_t getFrom() const;
+  uint16_t getUntil() const;
+
+  void setFrom(uint16_t from);
+  void setUntil(uint16_t until);
+
+  void updateSpan();
+  void reset(uint16_t from, uint16_t until);
+
+  virtual typename TRepresentation::ReturnType operator[](uint16_t index) const override;
+  virtual uint16_t getSize() const override;
+};
+
+template<class TRepresentation>
+class IndexedCompositionTemplate : public TRepresentation {
+public:
+  typedef SPtr<TRepresentation> RepPtr;  //smart pointer
+protected:
+  class Part {  //in stack
+  protected:
+    RepPtr rep;
+    uint16_t limitGlobalIndex;
+  public:
+    //Only important data is RepPtr, ints is autogenerated metadata
+    Part(TRepresentation* rep)
+      : rep(rep) {}
+    Part(const RepPtr& rep)
+      : rep(rep) {}
+    Part(RepPtr&& rep)
+      : rep(move(rep)) {}
+
+    bool isIndexInside(uint16_t index) const {
+      return index < limitGlobalIndex;
+    }
+  };
+  Stack<Part> stack;  //Stack of Parts
+  uint16_t size = 0;  //Size
+  uint16_t dirtyElement = 0xFFFF;
+
+  void evaluateMetaData(uint16_t fromPartIndex = 0);
+public:
+  using typename TRepresentation::ReturnType;
+
+  void removeEmpty();
+  void cleanElements(bool removeEmptyElements = false);
+  virtual uint16_t getSize() const override {
+    return size;
+  }
+  virtual ReturnType operator[](uint16_t index) const final override;
+
+  IndexedCompositionTemplate() {}  //empty
+  ~IndexedCompositionTemplate();   //5
+  IndexedCompositionTemplate(const IndexedCompositionTemplate& other)
+    : size(other.size), dirtyElement(other.dirtyElement), stack(other.stack) {}  //copy
+  IndexedCompositionTemplate(IndexedCompositionTemplate&& other)
+    : size(other.size), dirtyElement(other.dirtyElement), stack(move(other.stack)) {}
+  IndexedCompositionTemplate(PointerStack<TRepresentation>&& other);
+  IndexedCompositionTemplate& operator=(const IndexedCompositionTemplate& other) {
+    size = other.size;
+    stack = other.stack;
+    return *this;
+  }
+  IndexedCompositionTemplate& operator=(IndexedCompositionTemplate&& other) {
+    size = other.size;
+    stack = move(other.stack);
+    return *this;
+  }  ///5
+
+  void clear() {
+    stack.clear();
+  }
+
+  Part& part(uint8_t index = 0) {
+    return stack.item[index];
+  }
+  Part& partBack(uint8_t index = 0) {
+    return stack.itemBack[index];
+  }
+
+  RepPtr pop() {
+    return stack.pop().rep;
+  }  //normal pop
+  RepPtr popBack() {
+    return stack.popBack().rep;
+  }
+  RepPtr popFromFront(uint16_t skip) {
+    ////
+    return stack.popFromFront(skip).rep;
+  }
+  RepPtr popFromBack(uint16_t index) {
+    ////
+    return stack.popFromBack(index).rep;
+  }
+
+  void push(TRepresentation* value) {
+    stack.push();
+  }
+  void pushBack(TRepresentation* value);
+  void pushFromFront(TRepresentation* value, uint16_t skip);
+  void pushFromBack(TRepresentation* value, uint16_t skip);
+
+  void swapItems(uint16_t a, uint16_t b, bool fromTop);  //swap by index
+  void reverse();
+
+  Stack<TRepresentation*> cutLastParts(uint16_t items);  //from top
+  Stack<TRepresentation*> cutParts(uint16_t from, uint16_t until);
+  IndexedCompositionTemplate<TRepresentation>& appendParts(IndexedCompositionTemplate<TRepresentation>&& other);
+  IndexedCompositionTemplate<TRepresentation>& insertPartsAt(IndexedCompositionTemplate<TRepresentation>&& other, uint16_t at);
+
+  Stack<TRepresentation*> cutLastItems(uint16_t items);  //from top
+  Stack<TRepresentation*> cutItems(uint16_t from, uint16_t until);
+  IndexedCompositionTemplate<TRepresentation>& appendItems(IndexedCompositionTemplate<TRepresentation>&& other);
+  IndexedCompositionTemplate<TRepresentation>& insertItemsAt(IndexedCompositionTemplate<TRepresentation>&& other, uint16_t at);
+};
+
+template<class T> class IndexedRefComposition : public IndexedCompositionTemplate<RefRep<T>> {
+};
+template<class T> class IndexedValComposition : public IndexedCompositionTemplate<ValRep<T>> {
+  
+};
+
+template<class T>
+class StackIteratorRandomIO {
+protected:
+  ArrayRep<>;
+public:
+};
+///Stack
 
 
 template<class T>
@@ -448,6 +866,18 @@ template<class T> T& getRef(void* ptr) {
 template<class T> const T& getConstRef(const void* ptr) {
   return *((T*)ptr);
 }
+template<class T> constexpr nulPtr() noexcept {
+  return (T*)NULL;
+}
+template<class T> void delNull(T*& ptr) {
+  delete ptr;
+  ptr = NULL;
+}
+template<class T> void takeNull(T*& ptr) {
+  T* temp = ptr;
+  ptr = NULL;
+  return temp;
+}
 //BidirectionalIterator
 template<class T> void BiderectionalIterator<T>::setIndex(uint16_t index) {
   this->counter = backwards ? mirrorValueOnRange<uint16_t>(0, index, this->getSize()) : index;
@@ -469,6 +899,12 @@ template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::begin(bool
   this->backwards = backwards;
   setIndex(0);
   return *this;
+}
+template<class T> bool BiderectionalIterator<T>::goToItemNotEnd(uint16_t index) {
+  index -= this->counter;
+  if (index)
+    this->operator+=(index);
+  return this->notEnd();
 }
 template<class T> BiderectionalIterator<T>& BiderectionalIterator<T>::operator--() {
   return operator+=(-1);
@@ -543,25 +979,37 @@ template<class T> typename Array<T>::ArrayIterator Array<T>::iterator(uint16_t s
 ///Array<T>
 //Stack<T>
 template<class T> typename Stack<T>::StackNode* Stack<T>::nodeByIndex(uint16_t index) const {
-  if (index >= size) return NULL;
   if (!index) return tail;
-  index = size - 1 - index;  //how much skip
+  if (index >= size) return NULL;
+  return nodeByIndexTop(size - 1 - index);  //how much skip
+}
+template<class T> typename Stack<T>::StackNode* Stack<T>::nodeByIndexTop(uint16_t skip) const {
   StackNode* temp = head;
-  while (index) {  //while skip
+  while (skip) {  //while skip
     temp = temp->prev;
-    --index;
+    --skip;
   }
   return temp;
 }
-template<class T> typename Stack<T>::StackNode* Stack<T>::unChainedNode(uint16_t index) {
-  StackNode* after = nodeByIndex(index + 1);
+template<class T> typename Stack<T>::StackNode* Stack<T>::unChained(StackNode* after) {
   StackNode* selected = after->prev;
   after->prev = selected->prev;
   --size;
   return selected;
 }
+template<class T> typename Stack<T>::StackNode* Stack<T>::unChainedNode(uint16_t index) {
+  return unChained(nodeByIndex(index + 1));
+}
+template<class T> typename Stack<T>::StackNode* Stack<T>::unChainedNodeFront(uint16_t skip) {
+  return unChained(nodeByIndexTop(skip - 1));
+}
 template<class T> template<class U> void Stack<T>::insertNode(uint16_t index, U&& value) {
   StackNode* after = nodeByIndex(index);
+  after->prev = new StackNode(after->prev, forward<U>(value));
+  ++size;
+}
+template<class T> template<class U> void Stack<T>::insertNodeFront(uint16_t skip, U&& value) {
+  StackNode* after = nodeByIndexTop(skip);
   after->prev = new StackNode(after->prev, forward<U>(value));
   ++size;
 }
@@ -569,6 +1017,11 @@ template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndex(
   uLimitedStrict(index, size);
   if (index == (size - 1)) return head;
   return nodeByIndex(index + 1)->prev;
+}
+template<class T> typename Stack<T>::StackNode*& Stack<T>::pointerToNodeByIndexTop(uint16_t skip) {
+  uLimitedStrict(skip, size);
+  if (!skip) return head;
+  return nodeByIndexTop(skip - 1)->prev;
 }
 template<class T> Stack<T>::~Stack() {
   clear();
@@ -605,16 +1058,10 @@ template<class T> const T& Stack<T>::peekBack() const {
   if (size) return tail->value;
   //poutN(F("Stack is empty can't peek"));
 }
-template<class T> T& Stack<T>::item(uint8_t index) {
+template<class T> T& Stack<T>::itemAt(uint16_t index) {
   return nodeByIndex(this->size - index - 1)->value;
 }
-template<class T> T& Stack<T>::itemBack(uint8_t index) {
-  return nodeByIndex(index)->value;
-}
-template<class T> T& Stack<T>::operator[](uint16_t index) {
-  return nodeByIndex(index)->value;
-}
-template<class T> const T& Stack<T>::operator[](uint16_t index) const {
+template<class T> T& Stack<T>::itemLast(uint16_t index) {
   return nodeByIndex(index)->value;
 }
 template<class T> T Stack<T>::pop() {
@@ -642,22 +1089,17 @@ template<class T> T Stack<T>::popBack() {
 }
 template<class T> T Stack<T>::popFromFront(uint16_t skip) {
   uLimitedStrict(skip, size);
-  const uint16_t maxIndex = size - 1;
   if (!skip) return pop();
-  if (skip == maxIndex) return popBack();
-  if (size) {
-    return unChainedNode(maxIndex - skip)->pop();
-  }
-  //poutN(F("Stack is empty can't pop"));
+  if (skip == (size - 1)) return popBack();
+  //if (size)
+  return unChainedNodeFront(skip)->pop();
 }
-template<class T> T Stack<T>::popFromBack(uint16_t skip) {
-  uLimitedStrict(skip, size);
-  if (!skip) return popBack();
-  if (skip == size - 1) return pop();
-  if (size) {
-    return unChainedNode(skip)->pop();
-  }
-  //poutN(F("Stack is empty can't pop"));
+template<class T> T Stack<T>::popFromBack(uint16_t index) {
+  uLimitedStrict(index, size);
+  if (!index) return popBack();
+  if (index == (size - 1)) return pop();
+  //if (size)
+  return unChainedNode(index)->pop();
 }
 template<class T> template<class U> void Stack<T>::push(U&& value) {
   head = new StackNode(head, forward<U>(value));
@@ -672,14 +1114,14 @@ template<class T> template<class U> void Stack<T>::pushBack(U&& value) {
   ++size;
 }
 template<class T> template<class U> void Stack<T>::pushFromFront(U&& value, uint16_t skip) {
-  uLimited(skip, size);
   if (!skip) return push(forward<U>(value));
+  uLimited(skip, size);
   if (skip == size) return pushBack(forward<U>(value));
   if (size) return insertNode(size - skip, forward<U>(value));
 }
 template<class T> template<class U> void Stack<T>::pushFromBack(U&& value, uint16_t skip) {
-  uLimited(skip, size);
   if (!skip) return pushBack(forward<U>(value));
+  uLimited(skip, size);
   if (skip == size) return push(forward<U>(value));
   if (size) return insertNode(skip, forward<U>(value));
 }
@@ -714,12 +1156,12 @@ template<class T> void Stack<T>::reverse() {
 }
 
 template<class T> Stack<T> Stack<T>::cutLast(uint16_t items) {
-  uLimited(items, size);
   if (!items) return Stack();
+  uLimited(items, size);
   if (items == size) return Stack(move(*this));
-  StackNode* tempHead = head;                       //last node pf span always head
-  StackNode* tempTail = nodeByIndex(size - items);  //first node of span
-  head = tempTail->prev;                            //new head`
+  StackNode* tempHead = head;                   //last node pf span always head
+  StackNode* tempTail = nodeByIndexTop(items);  //first node of span
+  head = tempTail->prev;                        //new head`
   size -= items;
   if (!size) tail = NULL;
   return Stack(tempHead, tempTail, items);
@@ -768,9 +1210,7 @@ ret:
   return *this;
 }
 //Stack<T>::StackIteratorForward
-template<class T> Stack<T>::StackIteratorForward::StackIteratorForward(StackNode* start) {
-  currentNode = start;
-}
+
 template<class T> bool Stack<T>::StackIteratorForward::notEnd() const {
   return currentNode != NULL;
 }
@@ -787,9 +1227,54 @@ template<class T> ForwardIterator<T>& Stack<T>::StackIteratorForward::operator++
   }
   return *this;
 }
-template<class T> typename Stack<T>::StackIteratorForward Stack<T>::iteratorForward() const {
-  return StackIteratorForward(this->head);
+template<class T> typename Stack<T>::StackIteratorForward Stack<T>::iteratorForward(bool reverse, uint16_t skip) {
+  auto it = StackIteratorForward(this->head, reverse ? this : NULL);
+  it.skip(skip);
+  return it;
 }
+template<class T> typename Stack<T>::StackIteratorForwardIO Stack<T>::iteratorForwardIO(bool reverse, uint16_t skip) {
+  auto it = StackIteratorForwardIO(*this, reverse);
+  it.skip(skip);
+  return it;
+}
+template<class T> ForwardIterator<T>& Stack<T>::StackIteratorForwardIO::operator++() {
+  if (notEnd()) {
+    pointerToCurrentNode = &(this->currentNode->prev);
+    this->currentNode = *pointerToCurrentNode;
+    ++(this->counter);
+  }
+  return *this;
+}
+//StackIteratorForwardIO
+
+template<class T> T Stack<T>::StackIteratorForwardIO::pop();  //pop current
+template<class T> T Stack<T>::StackIteratorForwardIO::popOffset(int16_t offset);
+
+template<class T> T Stack<T>::StackIteratorForwardIO::popFront();  //normal pop
+template<class T> T Stack<T>::StackIteratorForwardIO::popBack();
+template<class T> T Stack<T>::StackIteratorForwardIO::popFromFront(uint16_t skip);
+template<class T> T Stack<T>::StackIteratorForwardIO::popFromBack(uint16_t index);
+
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::push(U&& value);
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::pushOffset(U&& value, int16_t offset);
+
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::pushFront(U&& value);
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::pushBack(U&& value);
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::pushFromFront(U&& value, uint16_t skip);
+template<class T> template<class U> void Stack<T>::StackIteratorForwardIO::pushFromBack(U&& value, uint16_t skip);
+
+template<class T> Stack<T> Stack<T>::StackIteratorForwardIO::cutLast(uint16_t items);
+
+template<class T> Stack<T> Stack<T>::StackIteratorForwardIO::cutNext(uint16_t items, bool inclusive);
+template<class T> Stack<T> Stack<T>::StackIteratorForwardIO::cutPrevios(uint16_t items, bool inclusive);
+template<class T> Stack<T> Stack<T>::StackIteratorForwardIO::cutLocal(int16_t from, int16_t until);
+
+template<class T> Stack<T> Stack<T>::StackIteratorForwardIO::cut(uint16_t from, uint16_t until);
+template<class T> Stack<T>& Stack<T>::StackIteratorForwardIO::append(Stack<T>&& other);
+template<class T> Stack<T>& Stack<T>::StackIteratorForwardIO::insertAt(Stack<T>&& other, uint16_t at);
+template<class T> Stack<T>& Stack<T>::StackIteratorForwardIO::insertAtLocal(Stack<T>&& other, uint16_t at);
+///StackIteratorForwardIO
+
 template<class T> typename Stack<T>::StackIteratorRandom Stack<T>::iteratorRandom(bool backwards) const {
   auto it = StackIteratorRandom(move(arrayForRandomAccess()));
   if (backwards) it.begin(true);
@@ -807,6 +1292,83 @@ template<class T> Array<T*> Stack<T>::arrayForRandomAccess() const {
   return ptrs;
 }
 ///Stack<T>
+//Reps
+template<class TRepresentation> TRepresentation* SpanRep<TRepresentation>::sourcePtr() const {
+  return rep;
+}
+template<class TRepresentation> uint16_t SpanRep<TRepresentation>::getFrom() const {
+  return from;
+}
+template<class TRepresentation> uint16_t SpanRep<TRepresentation>::getUntil() const {
+  return until;
+}
+template<class TRepresentation> void SpanRep<TRepresentation>::setFrom(uint16_t from) {
+  reset(from, until);
+}
+template<class TRepresentation> void SpanRep<TRepresentation>::setUntil(uint16_t until) {
+  reset(from, until);
+}
+template<class TRepresentation> void SpanRep<TRepresentation>::updateSpan() {
+  *this = SpanRep(*rep, from, until);
+}
+template<class TRepresentation> void SpanRep<TRepresentation>::reset(uint16_t from, uint16_t until) {
+  *this = SpanRep(*rep, from, until);
+}
+template<class TRepresentation> typename TRepresentation::ReturnType SpanRep<TRepresentation>::operator[](uint16_t index) const {
+  return (*rep)[index + from];
+}
+template<class TRepresentation> uint16_t SpanRep<TRepresentation>::getSize() const {
+  return until - from;
+}
+
+//IndexedCompositionTemplate
+template<class TRepresentation> typename TRepresentation::ReturnType IndexedCompositionTemplate<TRepresentation>::operator[](uint16_t index) const {
+  uLimitedStrict(index, size);
+  for (auto it = stack.iteratorForward(); it.notEnd(); ++it) {
+    auto& part = *it;
+    if (index < part.limitGlobalIndex)
+      return *(part.rep)[index - part.limitGlobalIndex - part.rep->GetSize()];
+  }
+  return TRepresentation::ReturnType();
+}
+template<class TRepresentation> void IndexedCompositionTemplate<TRepresentation>::evaluateMetaData(uint16_t fromPartIndex = 0) {  //recalculate indexes
+  uint16_t stackSize = stack.getSize();
+  if (!stackSize) {  //if 0
+    this->size = 0;  //size=0
+    goto done;       //done
+  }
+  if (fromPartIndex >= stackSize)  //if fromIndex>=stackSize also done;
+    goto done;
+  {  //In this case fromPartIndex is existing element
+    auto it = stack.iteratorForward();
+    if (fromPartIndex) {  //initial iteration after skip
+      it.skip(fromPartIndex - 1);
+      this->size = *it.limitGlobalIndex;  //size= valid lGI from previous element
+      ++it;                               //go to next first dirty element
+      auto& el = *it;
+      size += el.rep->getSize();   //add size
+      el.limitGlobalIndex = size;  //limit index
+    } else
+      this->size = 0;            //if no skip
+    for (; it.notEnd(); ++it) {  //for each rest
+      auto& el = *it;
+      size += el.rep->getSize();   //add size
+      el.limitGlobalIndex = size;  //last index is before size
+    }
+  }
+done:
+  dirtyElement = 0xFFFF;  //mark dirty element as max value
+}
+template<class TRepresentation> void IndexedCompositionTemplate<TRepresentation>::removeEmpty() {
+  for (auto it = stack.iteratorForwardIO(); it.notEnd(); ++it)
+    if (!(*it).rep->getSize()) it.pop();
+}
+template<class TRepresentation> void IndexedCompositionTemplate<TRepresentation>::cleanElements(bool removeEmptyElements) {
+  if (removeEmptyElements) removeEmpty();
+  evaluateMetaData(dirtyElement);
+}
+///IndexedCompositionTemplate
+///Reps
 ///Collections
 template<class T> T minMax(T a, T b, bool max) {
   return (max == (a > b)) ? a : b;
@@ -817,7 +1379,7 @@ template<class T> T assignSign(bool positive, T argument) {
 template<class T> T flipSign(bool flip, const T& argument) {
   return flip ? -argument : argument;
 }
-template<class T> T template<class T> T uLimit(T value, T limit) {
+template<class T> T uLimit(const T& value, const T& limit) {
   if (value > limit) return limit;
   return value;
 }
@@ -858,6 +1420,26 @@ template<class T> T arSum(T arr[], uint8_t size) {
     sum += arr[i];
   }
   return sum;
+}
+template<class T> bool inSpan(const T& a, const T& value, const T& b) {
+  if (a <= value)
+    return (value <= b);
+  return false;
+}
+template<class T> bool inSpanStrict(const T& a, const T& value, const T& b) {
+  if (a < value)
+    return (value < b);
+  return false;
+}
+template<class T> bool inSpanLStrict(const T& a, const T& value, const T& b) {
+  if (a < value)
+    return (value <= b);
+  return false;
+}
+template<class T> bool inSpanRStrict(const T& a, const T& value, const T& b) {
+  if (a <= value)
+    return (value < b);
+  return false;
 }
 template<class T> bool inMargin(const T& value, const T& target, const T& epsilon) {
   if (value > target) return (value - epsilon) < target;

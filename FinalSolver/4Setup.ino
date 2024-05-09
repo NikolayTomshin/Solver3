@@ -59,6 +59,7 @@ public:
 
 
 void setup() {
+  
   Serial.begin(PCBAUD);
 #ifdef PCDEBUG
   while (!Serial)

@@ -1,6 +1,6 @@
 #pragma once
 #include "SCom.h"
-class RobotState : public IUpdatable {
+class RobotState {//: public IUpdatable {
 protected:
   static RobotState* currentState;
   virtual void activate() = 0;
@@ -30,12 +30,12 @@ protected:
 
 class PassiveState : public RobotState {  //RS without special activation or disability
 public:
-  virtual void update() override {}
+  virtual void update()  {}
 };
 
 class DoNothing : public ReadyState {
 public:
-  virtual void update() override {}
+  virtual void update()  {}
   DoNothing() {}
 };
 
