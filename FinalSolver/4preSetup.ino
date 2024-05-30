@@ -49,16 +49,8 @@ public:
   //showBiosAtBeggining, openBiosAutomatically,  loadAllSettings, firstActiveScreen
 };  // startup(true, true, false, StartUpSettings::FirstActiveScreen::MainMenu);  //startup settings
 
-<<<<<<< Updated upstream:FinalSolver/4Setup.ino
-//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP
-//#define SaveAllSettings //run once and set all configs with program values
-//#define PCDEBUG
 
-
-void setup() {
-=======
 void systemInitRelease() {
->>>>>>> Stashed changes:FinalSolver/4preSetup.ino
   Serial.begin(PCBAUD);
 #ifdef PCDEBUG
   while (!Serial)
@@ -67,47 +59,31 @@ void systemInitRelease() {
   Serial.println(F("Start"));
   pcm.setCommandSet(pcSet());  //set pc commandSet
 
-  rm.initializeSettings();//
+  rm.initializeSettings();              //
   reg.addObject(&startup, F("start"));  //add configurable objects to register
   reg.addObject(&rm.right, F("right"));
   reg.addObject(&rm.left, F("left"));
   reg.addObject(&rm, F("rm"));
 
-
-<<<<<<< Updated upstream:FinalSolver/4Setup.ino
-#ifndef SaveAllSettings           //in SAS build don't initialize NX port and interface
-  Serial1.begin(NXBAUD);          //begin nx port
-  cm2.setCommandSet(startSet());  //set screen awakening detection
-
-  rm.initialize();  //prime motorics initialization
-  //Bios stage
-=======
 #ifndef SaveAllSettings                     //in SAS build don't initialize NX port and interface
   Serial1.begin(NXBAUD);                    //begin nx port
   cm2.setCommandSet(startSet());            //set screen awakening detection
->>>>>>> Stashed changes:FinalSolver/4preSetup.ino
   reg.getConfObject(F("start")).loadAll();  //load startup settings
   if (!startup.showBiosAtBeggining()) goto skipBios;
   if (!startup.openBiosAutomatically())                //If open bios not automatically, ask
     if (!showDialogue(new BiosInvite)) goto skipBios;  //if timeout skip
   showDialogue(new Bios);
 skipBios:
-  Serial.print(F("Bios skipped"));//end of bios stage, next loading configs
+  Serial.print(F("Bios skipped"));  //end of bios stage, next loading configs
   if (startup.loadAllSettings()) reg.loadAllConfigs();
-#else
-  reg.saveAllConfigs();
-  Serial.print(F("saving complete"));
-<<<<<<< Updated upstream:FinalSolver/4Setup.ino
-#endif  //!SaveAllSettings
-#ifndef SaveAllSettings
-  RobotState::setActive(*new FestControl);
-=======
   RobotState::setActive(*new FestControl);
   rm.initialize();
->>>>>>> Stashed changes:FinalSolver/4preSetup.ino
   rm.allignBoth();
   rm.open();
   Serial.print("GO");
+#else
+  reg.saveAllConfigs();
+  Serial.print(F("saving complete"));
 #endif  //!SaveAllSettings
   Serial.println(F("end"));
 }

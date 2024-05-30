@@ -8,12 +8,6 @@ bool& f(bool& other) {
   other = !other;
   return other;
 }
-String boolStr(bool value) {
-  return value ? F("true") : F("false");
-}
-bool fromString(const String& boolString) {
-  return !boolStr(true).compareTo(boolString);
-}
 int8_t Mod(int8_t period, int8_t argument) {  //it works
   if (!period) return 0;
   int8_t mod = argument % period;

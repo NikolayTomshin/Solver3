@@ -1,20 +1,18 @@
 #include "BitCoding.h"
 
 
-const String BitCoding::binaryByteString(uint8_t value) {
-  char chars[9];
-  chars[8] = '\0';
+StrVal BitCoding::binaryByteString(uint8_t value) {
+  StrVal chars(8);
   for (uint8_t i = 0; i < 8; ++i)
     chars[i] = readBit(value, i) ? '1' : '0';
-  return String(chars);
+  return chars;
 }
-const String BitCoding::binaryArrayString(const uint8_t value[], const uint8_t size) {
+StrVal BitCoding::binaryArrayString(const uint8_t value[], const uint8_t size) {
   const uint8_t charSize = size * 8;
-  char chars[charSize + 1];  //+1 for '\0'
-  chars[charSize] = '\0';
+  StrVal chars(charSize);  //+1 for '\0'
   for (uint8_t i = 0; i < charSize; ++i)
     chars[i] = readBit(value, i) ? '1' : '0';
-  return String(chars);
+  return chars;
 }
 void BitCoding::writeBinaryString(const String& string, uint8_t valueArray[], uint8_t size) {
   uint8_t limit = minMax<uint8_t>(size * 8, string.length() | 0b11111111, false);

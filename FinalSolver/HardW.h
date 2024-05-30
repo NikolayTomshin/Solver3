@@ -106,11 +106,7 @@ public:
   bool ready() const override;
 };
 
-<<<<<<< Updated upstream
-class LinChase : public IReady {  //, public IUpdatable {  //Linear chase
-=======
 class LinChase : public IReady /*, public IUpdatable*/ {  //Linear chase
->>>>>>> Stashed changes
   /*Model of point chasing target with const speed in real time.
     Usefull to predict when something real arrives when moving similarly*/
   bool underTarget = false;  //is position less than target
@@ -128,12 +124,8 @@ public:
   void assumeDirection();
   void teleport(float place);
   void go(int16_t position);
-<<<<<<< Updated upstream
-  void update() ;
-=======
   bool goingUp() const;
   void update();
->>>>>>> Stashed changes
   bool ready() const override;
 };
 
@@ -272,7 +264,7 @@ protected:
 
   void orientationUpdate();
   void chase();
-  void update() ;
+  void update();
 
 public:
   void assumeRotation();
@@ -298,15 +290,9 @@ void setLed(bool on);
 
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
-<<<<<<< Updated upstream
-class Scanner : public IReady {  //, public IUpdatable {
-  Cs scannerCs = Cs(0, 4, 2);    //z-смотрит от куба, y от клешни сканера, x совпадает с x
-public:
-=======
 class Scanner : public IReady /*, public IUpdatable*/ {
 protected:
   Cs scannerCs = Cs(0, 1, 2);  //by default same as cube
->>>>>>> Stashed changes
   Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
   MyServo servo;
   bool invertAngles = false;
@@ -320,17 +306,14 @@ public:
   void goAngle(uint8_t degrees);
   void goPosition(uint8_t _position);
   bool ready() const override;
-<<<<<<< Updated upstream
-  void update() ;
-=======
   void update() /*override*/;
 
   Vec currentVec() const;
->>>>>>> Stashed changes
   void snap(Color& color);
 
   friend class RobotMotorics;
   friend void scannerServoGoD();
+  friend class SES;
 };
 
 void waitIn();
@@ -410,7 +393,7 @@ public:
 
   void allignBoth();  //rotate claws to default state
 
-  void update() ;  //update of hardware
+  void update();  //update of hardware
 
   ClawUnit& getClaw(bool right);       //get claw reference
   Axis getClawAxis(bool right) const;  //get axis of claw

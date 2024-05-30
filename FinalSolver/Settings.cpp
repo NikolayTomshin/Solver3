@@ -68,9 +68,9 @@ bool Config::fromString(const String& valueString) const {
 Config::Type Config::getType() const {
   return type;
 }
-String Config::toString() const {
+StrVal Config::toString() const {
   switch (type) {
-    case Type::String: return getReference<String>();
+    case Type::String: return StrVal(getReference<StrRep>());
     case Type::Binary: return BitCoding::binaryArrayString(ptr, size);
     case Type::Bool: return boolStr(getReference<bool>());
     case Type::Complicated: return String(F("can't show"));

@@ -96,7 +96,7 @@ void loadSomething(const StrRep& objName, const StrRep& propName, const StrRep& 
 void loadTxt(const StrRep& name, const StrRep& txt);                                                            //update text  {name}.txt="{txt}"
 void loadVal(const StrRep& name, uint16_t val);                                                                 //{name}.val={val}
 void loadPic(const StrRep& name, uint16_t pic);
-void callFunction(const StrRep& name, const StrRep& par0 = FStr(F("")));  //{name} {pars}
+void callFunction(const StrRep& name, const StrRep& par0 = StrEmpty());  //{name} {pars}
 void addParametre(const String& par);
 void click(const String& name, bool press);  //click {name},[press/release]
 void goNextionPage(const String& pagename);

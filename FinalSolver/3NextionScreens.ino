@@ -40,7 +40,7 @@ void CO::loadControl() {
 void CO::loadMessage() {
   loadTxt(F("t1"), topMessage);
 }
-void CO::updateTopMessage(const StrRep& message) {
+void CO::updateTopMessage(const FStr& message) {
   topMessage = message;
   if (isActive) loadMessage();
 }
@@ -412,7 +412,7 @@ SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const St
 #endif  //SETDebug
   {
     uint8_t i = 0;
-    for (auto settingItem=settingItems.iterator(); settingItem.notEnd(); ++settingItem) {
+    for (auto settingItem = settingItems.iterator(); settingItem.notEnd(); ++settingItem) {
       (*collectionControl)[i] = *settingItem;
       ++i;
     }

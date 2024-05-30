@@ -59,9 +59,9 @@ void StrRep::printnFull(HardwareSerial& port) {
   printFull(port);
   port.write('\n');
 }
-virtual char StrEmpty::readAt(uint16_t index) override {
+char StrEmpty::readAt(uint16_t index) {
   return '\0';
 }
-virtual uint16_t StrEmpty::getSize() override {
+uint16_t StrEmpty::getSize() {
   return 0;
 }

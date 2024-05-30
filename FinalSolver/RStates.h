@@ -42,13 +42,13 @@ public:
 #include "CubeSolving.h"
 
 class CO : public NextionScreen {  //control operations
-  String topMessage;
+  FStr topMessage;
   bool controlEnabled = false;
 
   virtual void loadScreen() override;
   virtual const CommandSet getCommandSet() const override;
 public:
-  void updateTopMessage(const StrRep& message);
+  void updateTopMessage(const FStr& message);
   void updateControl(bool enabled);
   void loadControl();
   void loadMessage();
