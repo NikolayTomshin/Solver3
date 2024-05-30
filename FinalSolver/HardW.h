@@ -16,7 +16,6 @@ class Timer : public IReady
 class StoppableTimer : public Timer
 class LinChase : public IReady, public IUpdatable
 class MyServo : public Servo, public LinChase
-class MyServo : public Servo, public LinChase
 class ClawUnit : public IUpdatable
 class Scanner : public IReady, public IUpdatable
 class RobotMotorics
@@ -107,7 +106,11 @@ public:
   bool ready() const override;
 };
 
+<<<<<<< Updated upstream
 class LinChase : public IReady {  //, public IUpdatable {  //Linear chase
+=======
+class LinChase : public IReady /*, public IUpdatable*/ {  //Linear chase
+>>>>>>> Stashed changes
   /*Model of point chasing target with const speed in real time.
     Usefull to predict when something real arrives when moving similarly*/
   bool underTarget = false;  //is position less than target
@@ -125,7 +128,12 @@ public:
   void assumeDirection();
   void teleport(float place);
   void go(int16_t position);
+<<<<<<< Updated upstream
   void update() ;
+=======
+  bool goingUp() const;
+  void update();
+>>>>>>> Stashed changes
   bool ready() const override;
 };
 
@@ -134,6 +142,24 @@ public:
   MyServo() {}
   MyServo(uint8_t unitsSec, int16_t startPosition, uint8_t u = 100, uint8_t d = 100);
   void write(int value);
+};
+class MyServoWeak : public MyServo {
+protected:
+  uint8_t backlash;
+  int8_t lastBacklash;
+  enum State : uint8_t {
+    Idle,
+    Forward,
+    Reverse
+  } state;
+public:
+  MyServoWeak()
+    : MyServo() {}
+  MyServoWeak(uint8_t unitsSec, int16_t startPosition, uint8_t backlash, uint8_t u = 100, uint8_t d = 100)
+    : MyServo(unitsSec, startPosition, u, d) {}
+  void write(int value);
+  void update();
+  bool ready() const override;
 };
 
 const uint8_t colorLag = 5;
@@ -272,26 +298,39 @@ void setLed(bool on);
 
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
+<<<<<<< Updated upstream
 class Scanner : public IReady {  //, public IUpdatable {
   Cs scannerCs = Cs(0, 4, 2);    //z-смотрит от куба, y от клешни сканера, x совпадает с x
 public:
+=======
+class Scanner : public IReady /*, public IUpdatable*/ {
+protected:
+  Cs scannerCs = Cs(0, 1, 2);  //by default same as cube
+>>>>>>> Stashed changes
   Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
   MyServo servo;
   bool invertAngles = false;
   uint8_t position = 9;
   uint8_t servoAngles[4] = { 20, 42, 70, 80 };  //folded 0,1,2,3 centre
-  // uint8_t positionCode;//unused
-  // void setPosition(uint8_t posCode){//unused
-  // }
+
+  static Vec vecByPosition(uint8_t index);
+public:
   Scanner() {}
   Scanner(uint8_t sC, uint16_t degreesPerSec);
   void goAngle(uint8_t degrees);
   void goPosition(uint8_t _position);
   bool ready() const override;
+<<<<<<< Updated upstream
   void update() ;
+=======
+  void update() /*override*/;
+
+  Vec currentVec() const;
+>>>>>>> Stashed changes
   void snap(Color& color);
 
   friend class RobotMotorics;
+  friend void scannerServoGoD();
 };
 
 void waitIn();
@@ -331,7 +370,7 @@ public:
   void print() const;
 };
 
-// #define MotoricsDebug
+#define MotoricsDebug
 
 #define DISCOCLAW false  //left
 class RobotMotorics : /*public IUpdatable,*/ public IConfigurable {

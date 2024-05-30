@@ -142,6 +142,9 @@ void LinChase::go(int16_t position) {  //tell point to move to position
   going = true;                        //decide to go
   startedTime.setNow();                //reset timer
 }
+bool LinChase::goingUp() const {
+  return underTarget;
+}
 void LinChase::update() {                            //put in loop to precisely catch moment of arrival
   if (going) {                                       //if going
     unsigned long deltaT = startedTime.timeSince();  //count delta time
@@ -178,6 +181,30 @@ MyServo::MyServo(uint8_t unitsSec, int16_t startPosition, uint8_t u = 100, uint8
 void MyServo::write(int value) {
   Servo::write(value);
   go(value);
+}
+void MyServoWeak::write(int value) {
+  lastBacklash = goingUp() ? backlash : -backlash;  //if up, backlash positive, else not
+  MyServo::write(value + lastBacklash);
+  state = State::Forward;
+}
+void MyServoWeak::update() {
+  if (state == State::Idle) return;           //if ready, nothing to do
+  LinChase::update();                         //else update
+  if (!LinChase::ready()) return;             //if not ready, nothing to do
+  switch (state) {                            //if ready change state
+    case State::Forward:                      //was going forward
+      MyServo::write(read() - lastBacklash);  //go back by lastBackslash
+      state = State::Reverse;                 //state=Reverse
+      return;
+    case State::Reverse:    //was Reverse
+      state = State::Idle;  //state=Idle
+      lastBacklash = 0;
+    default:  //Idle is now impossible
+      return;
+  }
+}
+bool MyServoWeak::ready() const  {  //check readiness by special state
+  return state == State::Idle;
 }
 
 const uint8_t ClawUnit::numberOfConfigs() const {
@@ -304,6 +331,7 @@ void ClawUnit::ease() {
 void ClawUnit::orientationUpdate() {                           //updates encoder
   bool _ab[2] = { digitalRead(eA), digitalRead(eB) };          //remember current values
   uint8_t difference = (_ab[0] != ab[0]) + (_ab[1] != ab[1]);  //count differenses
+    // logEncoder();
   if (difference) {
     // Serial.print(_ab[0]);  //log AB channels
     // Serial.print(_ab[1]);
@@ -472,6 +500,7 @@ void ClawUnit::logEncoder() const {
 }
 void ClawUnit::update() {
   // Serial.print(getArrival());
+
   orientationUpdate();  //check orientation
   if (enableChase) {
     switch (jamStatus) {
@@ -662,6 +691,19 @@ bool Scanner::ready() const {
 }
 void Scanner::update() {
   servo.update();
+}
+static Vec Scanner::vecByPosition(uint8_t index) {
+  switch (index) {
+    case 1: return Vec(-1, -1, 2);
+    case 2: return Vec(0, 0, 2);
+    case 3: return Vec(-1, 0, 2);
+    default:
+      Serial.print(F("scanner invalid position"));
+      return Vec(0, 0, 0);
+  }
+}
+Vec Scanner::currentVec() const {
+  return vecByPosition(position) * scannerCs;
 }
 void Scanner::snap(Color& color) {
   tcs.begin();
@@ -1207,7 +1249,7 @@ void RobotMotorics::zAction(bool up) {  //move state through Z path
   Serial.println(index);
 #endif  //MotoricsDebug
   // waitIn();
-  if (index <= 7)  //ok operation
+  if (index < 8)  //ok operation
     switch (index) {
       case 2:  //left-Z-2-false; right-~y-4-true
       case 5:  //cases of rotating claw that is not holding cube
@@ -1225,7 +1267,11 @@ void RobotMotorics::zAction(bool up) {  //move state through Z path
         --stabilityPoints;                                    //decrease stability after regrab
         break;
     }
-  else Serial.println(F("Impossible Z move!"));  //not ok operation
+  else {
+    Serial.println(F("Impossible Z move!"));  //not ok operation
+    printCords();
+    Serial.println(currentZIndex());
+  }
 #ifdef MotoricsDebug
   printCords();
   Serial.println(currentZIndex());
@@ -1305,6 +1351,10 @@ void RobotMotorics::initializeSettings() {
   left.setChasePower(255, 130, 0.90);  //low
   right.setChasePower(250, 130, 0.85);
   scanner = Scanner(8, 400.0);
+  scanner.servoAngles[0] = 20;  //folded
+  scanner.servoAngles[1] = 42;
+  scanner.servoAngles[2] = 70;  //central
+  scanner.servoAngles[3] = 80;  //
 }
 void RobotMotorics::initializeHardware() {
   scanner.goPosition(0);
