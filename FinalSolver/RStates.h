@@ -1,6 +1,6 @@
 #pragma once
 #include "SCom.h"
-class RobotState {//: public IUpdatable {
+class RobotState : public IUpdatable {
 protected:
   static RobotState* currentState;
   virtual void activate() = 0;
@@ -30,12 +30,12 @@ protected:
 
 class PassiveState : public RobotState {  //RS without special activation or disability
 public:
-  virtual void update()  {}
+  virtual void update() override {}
 };
 
 class DoNothing : public ReadyState {
 public:
-  virtual void update()  {}
+  virtual void update() override {}
   DoNothing() {}
 };
 
@@ -48,7 +48,7 @@ class CO : public NextionScreen {  //control operations
   virtual void loadScreen() override;
   virtual const CommandSet getCommandSet() const override;
 public:
-  void updateTopMessage(const String& message);
+  void updateTopMessage(const StrRep& message);
   void updateControl(bool enabled);
   void loadControl();
   void loadMessage();

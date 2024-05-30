@@ -55,30 +55,15 @@ public:
 
 //SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP//SETUP
 //#define SaveAllSettings //run once and set all configs with program values
-#define PCDEBUG
+//#define PCDEBUG
 
 
 void setup() {
-  
   Serial.begin(PCBAUD);
 #ifdef PCDEBUG
   while (!Serial)
     ;
 #endif
-  Serial.println("Start");
-  Stack<int> s1;
-  s1.push(1);
-  s1.push(2);
-  Stack<int> s2;
-  s2.push(3);
-  s2.push(4);
-  s2.reverse();
-  s1.insertAt(move(s2),0);
-  {
-    for (auto it = s1.iteratorForward(); it.notEnd(); ++it)
-      Serial.println(*it);
-  }
-  return;
   Serial.println(F("Start"));
   pcm.setCommandSet(pcSet());  //set pc commandSet
 
@@ -92,8 +77,9 @@ void setup() {
   Serial1.begin(NXBAUD);          //begin nx port
   cm2.setCommandSet(startSet());  //set screen awakening detection
 
-  //reg.getConfObject(F("start")).loadAll();  //load startup settings
+  rm.initialize();  //prime motorics initialization
   //Bios stage
+  reg.getConfObject(F("start")).loadAll();  //load startup settings
   if (!startup.showBiosAtBeggining()) goto skipBios;
   if (!startup.openBiosAutomatically())                //If open bios not automatically, ask
     if (!showDialogue(new BiosInvite)) goto skipBios;  //if timeout skip
@@ -102,17 +88,15 @@ skipBios:
   Serial.print(F("Bios skipped"));
   //end of bios stage, next loading configs
   if (startup.loadAllSettings()) reg.loadAllConfigs();
-
-  rm.initializeSettings();
 #else
   reg.saveAllConfigs();
   Serial.print(F("saving complete"));
 #endif  //!SaveAllSettings
 #ifndef SaveAllSettings
-  rm.initializeHardware();
+  RobotState::setActive(*new FestControl);
   rm.allignBoth();
   rm.open();
-  RobotState::setActive(*new FestControl);
+  Serial.print("GO");
 #endif  //!SaveAllSettings
   Serial.println(F("end"));
 }

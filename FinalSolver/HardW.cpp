@@ -1298,7 +1298,7 @@ void RobotMotorics::initializeSettings() {
   right = ClawUnit(7, 6, 10, A3, A2);  //pins
   right.changeRotshift(true);
   right.changeRotshift(true);                                     //fix right rotation
-  left.SetAngles(1, 138 - cubeSizeDelta, 150 - cubeSizeDelta);    //angles left
+  left.SetAngles(1, 120 - cubeSizeDelta, 132 - cubeSizeDelta);    //angles left
   right.SetAngles(15, 143 - cubeSizeDelta, 155 - cubeSizeDelta);  //angles right
   left.setServoSpeed(300, 97, 100);
   right.setServoSpeed(300, 97, 100);

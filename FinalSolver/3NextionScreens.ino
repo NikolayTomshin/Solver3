@@ -18,7 +18,7 @@ const NextionScreen::TextField::Font& NextionScreen::TextField::Font::screenFont
 
 //FestControl
 void FestControl::activate() {
-  co.updateTopMessage(F("Можно брать и\r\n класть кубик"));
+  co.updateTopMessage(FStr(F("Можно брать и\r\n класть кубик")));
   setScreen(co);
   rm.setHistorySave(&ops);
 }
@@ -40,7 +40,7 @@ void CO::loadControl() {
 void CO::loadMessage() {
   loadTxt(F("t1"), topMessage);
 }
-void CO::updateTopMessage(const String& message) {
+void CO::updateTopMessage(const StrRep& message) {
   topMessage = message;
   if (isActive) loadMessage();
 }
@@ -69,7 +69,7 @@ const CommandSet EE::getCommandSet() const {
 void SES::loadScreen() {
   goNextionPage(F("SS"));
   for (uint8_t i = 0; i < 4; ++i) {
-    String s = F("h ");
+    StrVal s = F("h ");
     s[1] = digitOf(i);
     loadVal(s, rm.scanner.servoAngles[i]);
     s[0] = 'n';

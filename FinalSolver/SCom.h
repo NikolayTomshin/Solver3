@@ -4,8 +4,9 @@
 #include <Arduino.h>
 #include "Utilities.h"
 #include "HardW.h"
+#include "Str.h"
 
-#define SCOMdebug
+// #define SCOMdebug
 #define DIALOGUEdebug
 
 #define PCBAUD 115200
@@ -91,11 +92,11 @@ public:
 
 //nextion output
 void comEnd();                                                                                                  //Nextion command termination
-void loadSomething(const String& objName, const String& propName, const String& value, bool brackets = false);  //{objName}.{propName}={value}
-void loadTxt(const String& name, const String& txt);                                                            //update text  {name}.txt="{txt}"
-void loadVal(const String& name, uint16_t val);                                                                 //{name}.val={val}
-void loadPic(const String& name, uint16_t pic);
-void callFunction(const String& name, const String& par0 = "");  //{name} {pars}
+void loadSomething(const StrRep& objName, const StrRep& propName, const StrRep& value, bool brackets = false);  //{objName}.{propName}={value}
+void loadTxt(const StrRep& name, const StrRep& txt);                                                            //update text  {name}.txt="{txt}"
+void loadVal(const StrRep& name, uint16_t val);                                                                 //{name}.val={val}
+void loadPic(const StrRep& name, uint16_t pic);
+void callFunction(const StrRep& name, const StrRep& par0 = FStr(F("")));  //{name} {pars}
 void addParametre(const String& par);
 void click(const String& name, bool press);  //click {name},[press/release]
 void goNextionPage(const String& pagename);

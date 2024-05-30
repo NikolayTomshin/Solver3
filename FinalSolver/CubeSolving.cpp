@@ -253,7 +253,7 @@ void OperationStack::pushOptimised(const CubeOperation& cOp) {
     if (getSize()) {
       Axis thisAxis = cOp.getAx();
 
-      CubeOperation& firstLast = item();
+      CubeOperation& firstLast = itemLast();
       OrtAng firstOA = firstLast.getOA();
       Axis firstAxis = firstLast.getAx();
 
@@ -265,7 +265,7 @@ void OperationStack::pushOptimised(const CubeOperation& cOp) {
         return;
       }
       if (getSize() > 1) {
-        CubeOperation& secondLast = item(1);
+        CubeOperation& secondLast = itemLast(1);
         Axis secondAxis = secondLast.getAx();
         OrtAng secondOA = secondLast.getOA();
         if (firstAxis.getDIndex() == secondAxis.getDIndex()) {

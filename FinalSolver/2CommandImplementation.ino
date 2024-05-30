@@ -89,16 +89,16 @@ void scrambleCube(uint8_t moves) {
   activeState<FestControl>()->scrambleCube(moves);
 }
 void FestControl::scrambleCube(uint8_t moves) {  //после начала
-  co.updateTopMessage(F("Захватываю..."));
+  co.updateTopMessage(FStr(F("Захватываю...")));
   ops.clear();
   rm.grab();    /// Что делать?
   if (moves) {  //если нужно перемешать
-    co.updateTopMessage(F("Перемешиваю..."));
+    co.updateTopMessage(FStr(F("Перемешиваю...")));
     rm.setSmooth(false);
     rm.scramble(moves, millis());
   }
   rm.setSmooth(true);
-  co.updateTopMessage(F(" Куб захвачен\r\n  Что делать?"));
+  co.updateTopMessage(FStr(F(" Куб захвачен\r\n  Что делать?")));
   co.updateControl(true);
 }
 //ret
@@ -121,11 +121,11 @@ void proceedRet() {
 void FestControl::proceedRet() {  //собрать и отпустить
   ops.print();                    //debug log
   rm.setSmooth(false);            //legacy control feature (not gone yet)
-  co.updateTopMessage(F("Делаю обратно..."));
+  co.updateTopMessage(FStr(F("Делаю обратно...")));
   rm.playBack();
-  co.updateTopMessage(F("Отпускаю..."));
+  co.updateTopMessage(FStr(F("Отпускаю...")));
   rm.letGo();  //   кубик
-  co.updateTopMessage(F("Можно брать и\r\n класть кубик"));
+  co.updateTopMessage(FStr(F("Можно брать и\r\n класть кубик")));
   co.updateControl(false);
 }
 

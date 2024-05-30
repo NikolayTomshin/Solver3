@@ -1,117 +1,162 @@
+#pragma once
 #include <avr/pgmspace.h>
 #include <stdint.h>
-#pragma once
 #include <Arduino.h>
 #include "Utilities.h"
-
-class StrVal;          //char array
-class StrComposition;  //Composition of existing StrRefs
-
-
-class StrRep : public ValRep<char> {};
-class StrVar : StrRep {
+//
+// StrRep - parent of all strings
+// \-StrVar - variable strings
+// | \-StrVal - string with char array inside
+// | \-StrBuffer - reference to buffer with limit
+// | \-StrSpanVar - view of StrVar span
+// \-StrSum - view of string concatenation
+// \-StrSpan - view of StrRep span
+// \-FStr - view of string in flash memory
+//
+class StrRep;
+using StrSpan = SpanRepresentation<StrRep>;
+using StrSpanVar = VariableSpanRepresentation<StrRep>;
+using StrSum = RepresentationComposition<StrRep>;
+class StrVal;
+class StrRep : public ValRep<char> {
+protected:
+  using RIterator = Representation<char>::RIterator;
+  using DumbRiterator = Representation<char>::DumbRiterator;
 public:
-  virtual char& operator[](uint16_t index) = 0;
+  uint16_t strLen() const;
+  virtual SPtr<RIterator> iteratorForwardV() override;
 
-  class WriteIterator {
-  protected:
-    StrVar* strVar;
-    uint16_t index = 0;
-    uint16_t limit = 0;
-    bool reverse = false;
-  public:
-    WriteIterator(StrVar& strVar)
-      : strVar(&strVar), limit(strVar.getSize()) {}
-    WriteIterator begin(bool backwards = false, uint16_t index = 0, bool reverse = false) {
-      uLimitedStrict(index, limit);
-      this->index = backwards ? mirrorValueOnRange<uint16_t>(0, index, limit) : index;
-      this->reverse = reverse;
-      return *this;
-    }
-    char& operator*() {
-      return (*strVar)[index];
-    }
-    WriteIterator& operator++() {
-      return operator+=(1);
-    }
-    WriteIterator& operator--() {
-      return operator+=(-1);
-    }
-    WriteIterator& operator+=(int16_t delta) {
-      if (reverse) delta = -delta;
-      index += delta;
-      return *this;
-    }
-    bool notEnd() const {
-      return index < limit;
-    }
-  };
-  WriteIterator iteratorWrite() {
-    return WriteIterator(*this);
-  }
+  StrVal toVal();
+  StrVal toValFull();
+
+  void print(HardwareSerial& port);
+  void printn(HardwareSerial& port);
+  void printFull(HardwareSerial& port);
+  void printnFull(HardwareSerial& port);
 };
-class FlashStr : public StrRep {
-private:
+class StrEmpty : public StrRep {
+public:
+  StrEmpty() {}
+  virtual char readAt(uint16_t index) override;
+  virtual uint16_t getSize() override;
+};
+class FStr : public StrRep {
+protected:
+  using typename StrRep::RIterator;
+  using typename StrRep::DumbRiterator;
   char* const pgmP = NULL;
 public:
-  FlashStr(__FlashStringHelper* pgmP)
+  FStr(__FlashStringHelper* pgmP)
     : pgmP((char*)pgmP) {}
-  FlashStr(char* const pgmP)
+  FStr(char* const pgmP)
     : pgmP(pgmP) {}
-  virtual char operator[](uint16_t index) const override {
+  virtual char readAt(uint16_t index) override {
     return pgm_read_byte(pgmP + index);
   }
-  virtual uint16_t getSize() const override {
+  virtual uint16_t getSize() override {
     return strlen_P(pgmP);
   }
 };
-class StrRepSpan : public StrRep {
-private:
-  StrRep* strRep;
-  uint16_t from;
-  uint16_t until;
+
+class StrVar : public VariableRepresentation<StrRep> {  //Variable String  base class
+protected:
+  using RIterator = StrRep::RIterator;
+  using DumbRiterator = StrRep::DumbRiterator;
 public:
-  uint16_t getFrom() const {
-    return from;
+  char& operator[](uint16_t index) {
+    return itemAt(index);
   }
-  uint16_t getUntil() const {
-    return until;
+  void paste(const StrRep& rep, uint16_t from, uint16_t until = 0xFFFF) {
+    uLimited(from, getSize());
+    uLimited(until, getSize());
+    for (; from < until; ++from)
+      itemAt(from) = rep.readAt(from);
   }
-  void setFrom(uint16_t from) {
-    reset(from, until);
+};
+class StrVal : public StrVar {  //Value String class
+protected:
+  Array<char> array;
+public:
+  StrVal(uint16_t size)
+    : array(size) {}
+  StrVal(const StrVal& other)
+    : array(other.array) {}
+  StrVal(StrVal&& other)
+    : array(move(other.array)) {}
+  StrVal(__FlashStringHelper* fsh) {
+    FStr fs(fsh);
+    uint16_t len = fs.getSize();
+    array = Array<char>(len);
+    for (uint16_t i = 0; i < len; ++i)
+      array[i] = fs.readAt(i);
   }
-  void setUntil(uint16_t until) {
-    reset(from, until);
+  ~StrVal() {}
+  StrVal& operator=(const StrVal& other) {
+    array = other.array;
+    return *this;
   }
-  void updateSpan() {
-    *this = StrRepSpan(*strRep, from, until);
+  StrVal& operator=(const StrRep& other) {
+    *this = other.toVal();
+    return *this;
   }
-  void reset(uint16_t from, uint16_t until) {
-    *this = StrRepSpan(*strRep, from, until);
+  StrVal& operator=(StrVal&& other) {
+    array = move(other.array);
+    return *this;
   }
-  StrRepSpan(const volatile StrRep& strRep, uint16_t from, uint16_t until = 0xFFFF)
-    : strRep(&strRep) {
-    uLimited(until, strRep.getSize());  //max until = size
-    this->until = until;
-    this->from = uLimitStrict(from, until);  //from is less then until
+  virtual char readAt(uint16_t index) override {
+    return array[index];
   }
-  virtual char operator[](uint16_t index) const override {
-    return (*strRep)[index + from];
+  virtual uint16_t getSize() override {
+    return array.getSize();
   }
-  virtual uint16_t getSize() const override {
-    return until - from;
+  virtual char& itemAt(uint16_t index) override {
+    return array[index];
+  }
+};
+class StrBuffer : public StrVar {  //reference to char[] buffer
+protected:
+  char* pointer = NULL;
+  uint16_t size = 0;
+public:
+  StrBuffer(char* pointer, uint16_t size)
+    : pointer(pointer), size(size) {}
+  StrBuffer(const StrBuffer& other) {
+    *this = other;
+  }
+  StrBuffer(StrBuffer&& other) {
+    *this = move(other);
+  }
+  ~StrBuffer() {}
+  StrBuffer& operator=(const StrBuffer& other) {
+    uint16_t limit = uLimit(size, other.size);
+    for (uint16_t i = 0; i < limit; ++i)
+      pointer[i] = other[i];
+    return *this;
+  }
+  StrBuffer& operator=(StrBuffer&& other) {
+    swap(pointer, other.pointer);
+    swap(size, other.size);
+    return *this;
+  }
+  virtual char readAt(uint16_t index) override {
+    return pointer[index];
+  }
+  virtual uint16_t getSize() override {
+    return size;
+  }
+  virtual char& itemAt(uint16_t index) override {
+    return pointer[index];
   }
 };
 
-class StrSum : public IndexedCompositionTemplate<char, StrRep> {
-public:
-  virtual char operator[](uint16_t index) const override {
-    uLimitedStrict(index, size);
-    for (auto it = stack.iteratorForward(); it.notEnd(); ++it) {
-      auto& el = *it;
-      if (el.isIndexInside(index))
-        return (*el.strRep)[index - el.firstGlobalIndex];  //char by local index
-    }
-    return '\0';
-  }
-};
+//strCompose(StrSum&... args) - returns StrSum of arguments
+template<typename T, typename = StrSum&>
+StrSum strCompose(T first) {
+  StrSum sum;
+  sum.push(SPtr<StrRep>(&first));
+  return sum;
+}
+template<typename T, typename... T2, typename = StrSum&>
+StrSum strCompose(T first, T2... args) {
+  return strCompose(first, args...).push(SPtr<StrRep>(&first));
+}
