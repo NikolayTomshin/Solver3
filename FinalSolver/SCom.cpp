@@ -429,11 +429,11 @@ void PageScreen::PageControl::load() {
   delay(10);
 #endif
 }
-PageScreen::PageControl PageScreen::PageControl::simplePC(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage) {
+PageScreen::PageControl PageScreen::PageControl::simplePC(const StrRep& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage) {
   return PageControl(elementNamePrefix, numberOfPages, startingPage, F("Стр. "), F("/"), F(""));
 }
-PageScreen::PageControl::PageControl(const String& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage,
-                                     const String& pageFormatBefore, const String& pageFormatSeparator, const String& pageFormatAfter)
+PageScreen::PageControl::PageControl(const StrRep& elementNamePrefix, uint8_t numberOfPages, uint8_t startingPage,
+                                     const StrRep& pageFormatBefore, const StrRep& pageFormatSeparator, const StrRep& pageFormatAfter)
   : NextionScreen::Element(elementNamePrefix) {
   currentPage = startingPage;
   this->numberOfPages = numberOfPages;
@@ -484,13 +484,13 @@ uint8_t PageScreen::PageControl::getNumberOfPages() const {
   return numberOfPages;
 }
 
-TitledScreen::TitledScreen(const String& title) {
+TitledScreen::TitledScreen(const StrRep& title) {
   this->title = title;
 }
 void TitledScreen::loadTitle() const {
   loadTxt(F("ttl"), title);
 }
-void TitledScreen::loadTitle(const String& title) {
+void TitledScreen::loadTitle(const StrRep& title) {
   this->title = title;
   loadTitle();
 }
@@ -507,7 +507,7 @@ CollectionScreen::~CollectionScreen() {
   delete collectionControl;
 }
 CollectionScreen::CollectionControl::
-  CollectionControl(const String& collectionPrefix, uint8_t sizeOfCollection,
+  CollectionControl(const StrRep& collectionPrefix, uint8_t sizeOfCollection,
                     uint8_t startingItemIndex, uint8_t numberOfVisibleItems, itemHider hideItem)
   : NextionScreen::Element::Element(collectionPrefix) {
   this->hideItem = hideItem;
@@ -552,7 +552,7 @@ void CollectionScreen::CollectionControl::inputEvent(const char args[]) {
   if (i < upperLimitOfAccess())
     items[i + startingItemIndex]->inputEvent(&args[1]);
 }
-void CollectionScreen::hideElement(const String& collectionPrefix, uint8_t i) {
+void CollectionScreen::hideElement(const StrRep& collectionPrefix, uint8_t i) {
   setVisibility(letterIndex(collectionPrefix, i), false);
 }
 void CollectionScreen::CollectionControl::setItemVisible(uint8_t i, bool visible) const {
@@ -570,10 +570,10 @@ void CollectionScreen::CollectionControl::setItemVisible(uint8_t i, bool visible
 uint8_t NextionScreen::TextField::Font::lengthOfLine(const uint16_t& pixels) {
   return uint8_t(pixels / (charWidthAverageDpx * 10.0));
 }
-void NextionScreen::TextField::setString(const String& string) {
+void NextionScreen::TextField::setString(const StrRep& string) {
   currentText = string;
 }
-NextionScreen::TextField::TextField(const String& textFieldNamePrefix, uint8_t fontID, uint16_t widthInPixels,
+NextionScreen::TextField::TextField(const StrRep& textFieldNamePrefix, uint8_t fontID, uint16_t widthInPixels,
                                     NextionScreen::TextField::LoadMode loadMode)
   : Element(textFieldNamePrefix) {
   this->fontID = fontID;
@@ -588,11 +588,11 @@ void NextionScreen::TextField::load() {
     default: return;
   }
 }
-void NextionScreen::TextField::loadString(const String& string) {
+void NextionScreen::TextField::loadString(const StrRep& string) {
   currentText = string;
   load();
 }
-void NextionScreen::TextField::loadFit(const String& string) {
+void NextionScreen::TextField::loadFit(const StrRep& string) {
   const uint16_t& length = string.length();
   for (uint8_t i = 0; i < Font::numberOfFonts(); i++)
     if (Font::screenFontsSizeDesc(i).lengthOfLine(widthInPixels) >= length) {
@@ -668,7 +668,7 @@ ShortDialogue::~ShortDialogue() {
   delete message;
 }
 
-ShortDialogue::ShortDialogue(Type type, Options options, const String& message)
+ShortDialogue::ShortDialogue(Type type, Options options, const StrRep& message)
   : TitledScreen(title) {
   String title;
   switch (type) {
@@ -700,17 +700,17 @@ ShortDialogue::ShortDialogue(Type type, Options options, const String& message)
   initialize(message, l, messageL, m, messageM, r, messageR);
 }
 
-ShortDialogue::ShortDialogue(const String& title, const String& messageString,
-                             char l, const String& messageL,
-                             char m, const String& messageM,
-                             char r, const String& messageR)
+ShortDialogue::ShortDialogue(const StrRep& title, const StrRep& messageString,
+                             char l, const StrRep& messageL,
+                             char m, const StrRep& messageM,
+                             char r, const StrRep& messageR)
   : TitledScreen(title) {
   initialize(messageString, l, messageL, m, messageM, r, messageR);
 }
-void ShortDialogue::initialize(const String& messageString,
-                               char l, const String& messageL,
-                               char m, const String& messageM,
-                               char r, const String& messageR) {
+void ShortDialogue::initialize(const StrRep& messageString,
+                               char l, const StrRep& messageL,
+                               char m, const StrRep& messageM,
+                               char r, const StrRep& messageR) {
   this->message = new TextField(F("t0"), 0, 320, TextField::LoadMode::Multiline);
   this->message->setString(messageString);
 
@@ -730,7 +730,7 @@ void ShortDialogue::loadScreen() {
     else loadTxt(String(letterOf(i)), stringOf(i));
   }
 }
-const String& ShortDialogue::stringOf(uint8_t i) const {
+const StrRep& ShortDialogue::stringOf(uint8_t i) const {
   switch (i) {
     case 0: return l;
     case 1: return m;
@@ -754,15 +754,15 @@ void ShortDialogue::inputEvent() {
     default:;
   }
 }
-ShortDialogue* ShortDialogue::notice(const String& message) {
+ShortDialogue* ShortDialogue::notice(const StrRep& message) {
   return new ShortDialogue(Type::Notice, Options::Proceed, message);
 }
-ShortDialogue* ShortDialogue::yn(const String& message) {
+ShortDialogue* ShortDialogue::yn(const StrRep& message) {
   return new ShortDialogue(Type::Warning, Options::YesNo, message);
 }
-ShortDialogue* ShortDialogue::ync(const String& message) {
+ShortDialogue* ShortDialogue::ync(const StrRep& message) {
   return new ShortDialogue(Type::Warning, Options::YesNoCancel, message);
 }
-ShortDialogue* ShortDialogue::err(const String& message) {
+ShortDialogue* ShortDialogue::err(const StrRep& message) {
   return new ShortDialogue(Type::Error, Options::Proceed, message);
 }

@@ -70,12 +70,18 @@ class FStr : public StrRep {
 protected:
   using typename StrRep::RIterator;
   using typename StrRep::DumbRiterator;
-  char* const pgmP = NULL;
+  const char* pgmP = NULL;
 public:
   FStr(__FlashStringHelper* pgmP)
     : pgmP((char*)pgmP) {}
   FStr(char* const pgmP)
     : pgmP(pgmP) {}
+  FStr(const FStr& other)
+    : pgmP(other.pgmP) {}
+  FStr& operator=(const FStr& other) {
+    pgmP = other.pgmP;
+    return *this;
+  }
   virtual char readAt(uint16_t index) override {
     return pgm_read_byte(pgmP + index);
   }
@@ -240,7 +246,22 @@ public:
     return pointer[index];
   }
 };
+class //continue
 
+StrVal boolStr(bool value) {
+  return value ? F("true") : F("false");
+}
+bool fromString(const String& boolString) {
+  return !boolStr(true).compareTo(boolString);
+}
+
+template<> inline void pout(const StrRep& data) {
+  data.print(Serial);
+}
+template<> inline void poutN(const StrRep& data) {
+  data.print(Serial);
+  pnl();
+}
 //strCompose(StrSum&... args) - returns StrSum of arguments
 template<typename T, typename = StrSum&>
 StrSum strCompose(T first) {

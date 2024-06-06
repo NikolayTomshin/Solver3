@@ -40,7 +40,7 @@ void CO::loadControl() {
 void CO::loadMessage() {
   loadTxt(Q("t1"), topMessage);
 }
-void CO::updateTopMessage(const StrRep& message) {
+void CO::updateTopMessage(const FStr& message) {
   topMessage = message;
   if (isActive) loadMessage();
 }

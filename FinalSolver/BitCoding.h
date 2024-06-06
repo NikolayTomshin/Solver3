@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "Utilities.h"
 #include "IO.h"
+#include "Str.h"
 //data compression and bitwise manipulation
 
 #define PermutationDebug
@@ -12,8 +13,8 @@ class BitCoding {
 public:
   virtual ~BitCoding() = 0;
 
-  static const StrVal binaryByteString(uint8_t value);
-  static const StrVal binaryArrayString(const uint8_t value[], uint8_t size);
+  static StrVal binaryByteString(uint8_t value);
+  static StrVal binaryArrayString(const uint8_t value[], uint8_t size);
   static void writeBinaryString(const StrRep& string, uint8_t valueArray[], uint8_t size);
 
   static uint8_t readBits(const uint8_t& valueByte, uint8_t bitIndex, uint8_t length);

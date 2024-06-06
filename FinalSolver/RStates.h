@@ -48,7 +48,7 @@ class CO : public NextionScreen {  //control operations
   virtual void loadScreen() override;
   virtual const CommandSet getCommandSet() const override;
 public:
-  void updateTopMessage(const StrRep& message);
+  void updateTopMessage(const FStr& message);
   void updateControl(bool enabled);
   void loadControl();
   void loadMessage();

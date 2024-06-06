@@ -181,10 +181,10 @@ end:
 SPtr<StrRep> StrRep::getProxyLen() {
   return SPtr<StrRep>(new LenSizeProxy(*this));
 }
-virtual char StrEmpty::readAt(uint16_t index) override {
+char StrEmpty::readAt(uint16_t index) {
   return '\0';
 }
-virtual uint16_t StrEmpty::getSize() override {
+uint16_t StrEmpty::getSize() {
   return 0;
 }
 StrVar& StrVar::truncate(uint16_t lengthLeft = 0) {

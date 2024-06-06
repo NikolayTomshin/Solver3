@@ -1,13 +1,13 @@
 #include "BitCoding.h"
 
 
-const StrVal BitCoding::binaryByteString(uint8_t value) {
+StrVal BitCoding::binaryByteString(uint8_t value) {
   StrVal chars(8);
   for (uint8_t i = 0; i < 8; ++i)
     chars[i] = readBit(value, i) ? '1' : '0';
   return chars;
 }
-const StrVal BitCoding::binaryArrayString(const uint8_t value[], uint8_t size) {
+StrVal BitCoding::binaryArrayString(const uint8_t value[], uint8_t size) {
   size = size * 8;
   StrVal chars(size);
   for (uint8_t i = 0; i < size; ++i)
