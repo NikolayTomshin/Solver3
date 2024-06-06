@@ -71,7 +71,7 @@ public:
   void cascadeFlush();
 };
 
-class PortListener : public CommandListener {//, public IUpdatable {  //class for reading fixed length commands for state
+class PortListener : public CommandListener {  //, public IUpdatable {  //class for reading fixed length commands for state
 protected:
   HardwareSerial* port;
   TimeStamp lastUpdate;
@@ -81,7 +81,7 @@ protected:
 public:
   PortListener(HardwareSerial* port, uint32_t baudRate, SecondaryListener* dumpListener = NULL);
   void flushPortToSubscriber();
-  void update() ;
+  void update();
 };
 
 class SecondaryListener : public CommandListener {
@@ -96,15 +96,15 @@ void loadSomething(const StrRep& objName, const StrRep& propName, const StrRep& 
 void loadTxt(const StrRep& name, const StrRep& txt);                                                            //update text  {name}.txt="{txt}"
 void loadVal(const StrRep& name, uint16_t val);                                                                 //{name}.val={val}
 void loadPic(const StrRep& name, uint16_t pic);
-void callFunction(const StrRep& name, const StrRep& par0 = FStr(F("")));  //{name} {pars}
-void addParametre(const String& par);
-void click(const String& name, bool press);  //click {name},[press/release]
-void goNextionPage(const String& pagename);
-String letterIndex(const String& letter, uint8_t index);
+void callFunction(const StrRep& name, const StrRep& par0 = StrEmpty());  //{name} {pars}
+void addParametre(const StrRep& par);
+void click(const StrRep& name, bool press);  //click {name},[press/release]
+void goNextionPage(const StrRep& pagename);
+StrSum letterIndex(const StrRep& letter, uint8_t index);
 void loadSlider(uint8_t number, uint8_t value);
-void setVisibility(const String& objName, bool visible);
+void setVisibility(const StrRep& objName, bool visible);
 
-class NextionScreen{// : public IUpdatable {
+class NextionScreen {  // : public IUpdatable {
 protected:
   class Inputable {
   public:
@@ -173,7 +173,7 @@ public:
   static void reloadActive();
 
   void setActive(PortListener& port);
-  virtual void update()  {}
+  virtual void update() {}
   static void deactivateScreen(PortListener& port);
   virtual void loadScreen() = 0;
   virtual const CommandSet getCommandSet() const = 0;

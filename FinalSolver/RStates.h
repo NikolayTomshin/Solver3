@@ -42,7 +42,7 @@ public:
 #include "CubeSolving.h"
 
 class CO : public NextionScreen {  //control operations
-  String topMessage;
+  StrVal topMessage;
   bool controlEnabled = false;
 
   virtual void loadScreen() override;
@@ -109,8 +109,8 @@ protected:
     Config* config;
     bool withPtr;
   public:
-    SettingItem(Config* config, bool withPtr, const String& name);
-    virtual void loadItem(const String& collectionNamePrefix, uint8_t index) override;
+    SettingItem(Config* config, bool withPtr, const StrRep& name);
+    virtual void loadItem(const StrRep& collectionNamePrefix, uint8_t index) override;
     virtual void inputEvent(const char args[]) override;
 
     void edit();
@@ -119,7 +119,7 @@ protected:
   SettingsScreen(){};
 public:
   virtual void loadScreen() override;
-  SettingsScreen(const Array<SettingItem*>& settingItems, const String& title, uint8_t numberOfVisibleItems);
+  SettingsScreen(const Array<SettingItem*>& settingItems, const StrRep& title, uint8_t numberOfVisibleItems);
   virtual void inputEvent() override;
   virtual void onExit() override;
 };
@@ -128,7 +128,7 @@ protected:
   const Config* config;
   bool dirty = false;
 
-  String repString;
+  StrVal repString;
 
   uint8_t cursorLimit;
   uint8_t cursor = 0;
@@ -161,12 +161,12 @@ protected:
 
   void apply();
   void cancel();
-  static String elName(uint8_t i);
+  static StrVal elName(uint8_t i);
 public:
   virtual const CommandSet getCommandSet() const override;
 
   ~EditorScreen();
-  EditorScreen(Config* config, const String& title);
+  EditorScreen(Config* config, const StrRep& title);
   virtual void loadScreen() override;
   virtual void inputEvent() override;
 };

@@ -376,15 +376,15 @@ void ICubeState::printAxonometric(const Orientation& rotateAs) {
 
   String pen = String(statePenalty());
   while (pen.length() < 3) pen.concat(' ');
-  pout("|___|___|___|/  Penalty=");  //9
+  pout(F("|___|___|___|/  Penalty="));  //9
   pout(pen);
-  pout("  `\\_");
+  pout(F("  `\\_"));
   pout(f()); /*45*/
-  pout("_\\_");
+  pout(F("_\\_"));
   pout(f()); /*46*/
   pout("_\\_");
   pout(f()); /*47*/
-  poutN("_\\|");
+  poutN(F("_\\|"));
 #else
   for (uint8_t i = 0; i < 48; i++) poutN(f());
 #endif

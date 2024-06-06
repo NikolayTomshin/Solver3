@@ -18,7 +18,7 @@ const NextionScreen::TextField::Font& NextionScreen::TextField::Font::screenFont
 
 //FestControl
 void FestControl::activate() {
-  co.updateTopMessage(FStr(F("Можно брать и\r\n класть кубик")));
+  co.updateTopMessage(Q("Можно брать и\r\n класть кубик"));
   setScreen(co);
   rm.setHistorySave(&ops);
 }
@@ -29,16 +29,16 @@ void FestControl::disable() {
 
 //Fest Control screens
 void CO::loadScreen() {
-  goNextionPage(F("CO"));
+  goNextionPage(Q("CO"));
   loadMessage();
   loadControl();
 }
 
 void CO::loadControl() {
-  loadPic(F("p0"), controlEnabled ? 17 : 16);
+  loadPic(Q("p0"), controlEnabled ? 17 : 16);
 }
 void CO::loadMessage() {
-  loadTxt(F("t1"), topMessage);
+  loadTxt(Q("t1"), topMessage);
 }
 void CO::updateTopMessage(const StrRep& message) {
   topMessage = message;
@@ -53,23 +53,23 @@ const CommandSet CO::getCommandSet() const {
 };
 
 void BE::loadScreen() {
-  goNextionPage(F("BE"));
+  goNextionPage(Q("BE"));
 }
 const CommandSet BE::getCommandSet() const {
   return begSet();
 };
 
 void EE::loadScreen() {
-  goNextionPage(F("EE"));
+  goNextionPage(Q("EE"));
 }
 const CommandSet EE::getCommandSet() const {
   return retSet();
 };
 
 void SES::loadScreen() {
-  goNextionPage(F("SS"));
+  goNextionPage(Q("SS"));
   for (uint8_t i = 0; i < 4; ++i) {
-    StrVal s = F("h ");
+    StrVal s(F("h "));
     s[1] = digitOf(i);
     loadVal(s, rm.scanner.servoAngles[i]);
     s[0] = 'n';
@@ -131,12 +131,12 @@ void EditorScreen::setFlags(bool Binary, bool Int, bool Uint, bool Insert, bool 
 }
 void EditorScreen::updateString() const {
   comEnd();
-  Serial1.print(F("va.txt=\""));
+  Q("va.txt=\"").print(Serial1);
   if (getBool() || getLocked())
-    Serial1.print(repString);
+    repString.print(Serial1);
   else {
     uint8_t i = 0;
-    const uint8_t len = repString.length();
+    const uint8_t len = repString.strLen();
     for (; i < cursor; ++i)
       Serial1.write(repString[i]);
     if (getInsert()) {
@@ -155,7 +155,7 @@ void EditorScreen::updateString() const {
 }
 void EditorScreen::moveCursor(bool right) {
   if (right) {
-    if ((cursor < repString.length()) && (cursor < cursorLimit))
+    if ((cursor < repString.strLen()) && (cursor < cursorLimit))
       ++cursor;
     return;
   }
@@ -163,21 +163,21 @@ void EditorScreen::moveCursor(bool right) {
     --cursor;
 }
 void EditorScreen::enterChar(char c) {
-  //insert doesn't add length exept when on last {[c]=c; if ++c}
-  //!insert always adds length {string+=end, if ++c}
+  //insert doesn't add length exept when on last {[c]=c; if ++c} insert=overtype
+  //!insert always adds length {string+=end, if ++c}            !insert=insert
   //cursor can't move on cursorlimit=max length of string
-  if (repString.length() < cursorLimit)  //may add chars
+  if (repString.strLen() < cursorLimit)  //may add chars
   {
     if (getInsert()) {                     //insert at cursor
-      if (cursor == repString.length()) {  //cursor at the end
-        repString += c;
+      if (cursor == repString.strLen()) {  //cursor at the end
+        repString.append(C(c));
         goto moveCursor;
-      }                                //else  rewrite char at cursor
-    } else {                           //add at cursor
-      uint8_t n = repString.length();  //index of not existing character
-      uint8_t p = n - 1;               //index of last character
-      repString += repString[p];       //add last char to the end
-      while (n > cursor) {             //push forward chars from the cursor
+      }                                   //else  rewrite char at cursor
+    } else {                              //add at cursor
+      uint8_t n = repString.strLen();     //index of not existing character
+      uint8_t p = n - 1;                  //index of last character
+      repString.append(C(repString[p]));  //add last char to the end
+      while (n > cursor) {                //push forward chars from the cursor
         repString[n] = repString[p];
         --n;
         --p;
@@ -193,22 +193,22 @@ void EditorScreen::eraseChar() {
   //insert erases this character
   //!insert erases previous character
   if (getBinary()) return;
-  if (!repString.length()) return;
+  if (!repString.strLen()) return;
   if (!(cursor || getInsert())) return;
   uint8_t n = cursor + getInsert();  //index after erased char
   uint8_t p = n - 1;                 //index of erased char
-  const uint8_t len = repString.length();
+  const uint8_t len = repString.strLen();
   while (n < len) {  //collapse all characters to the erased
     repString[p] = repString[n];
     ++n;
     ++p;
   }
-  repString = repString.substring(0, repString.length() - 1);  //resize string
+  repString.truncate(repString.strLen() - 1);  //resize string
   moveCursor(false);
 }
 void EditorScreen::negate() {
   if (getBool()) {
-    repString = boolStr(!fromString(repString));
+    repString.fillWith(boolStr(!boolFromString(repString)));
     return;
   }
   if (getBinary()) {
@@ -216,15 +216,18 @@ void EditorScreen::negate() {
     return;
   }
   if (!getUint()) {  //float, int
-    if (repString.indexOf('-') >= 0)
-      repString.replace(F("-"), F(""));
-    else repString = String(F("-")) + repString;
+    if (repString.indexOf(C('-')) >= 0)
+      repString.replace(C('-'), StrEmpty());
+    else repString.insertAt(C('-'), 0);
   }
 }
 void EditorScreen::putPoint() {
   if (flags & 0b00110111) return;  //not float
-  if (repString.indexOf('.'))
-    repString.replace(F("."), F(""));
+  uint16_t pointAt = repString.indexOf(C('.'));
+  if (pointAt != -1) {
+    repString.replace(C('.'), StrEmpty());
+    if (pointAt < cursor) --cursor;
+  }
   enterChar('.');
 }
 const CommandSet EditorScreen::getCommandSet() const {
@@ -246,12 +249,12 @@ EditorScreen::EditorScreen(Config* config, const String& title)
     //                             (Binary, Int, Uint, Insert, Bool, Locked)
     default: setFlags(false, false, false, false, false, true);
   }
-  repString = config->toString();
-  setInsert(getBinary());
-  cursorLimit = getBinary() ? repString.length() : 25;
+  repString.fillWith(config->toString());
+  setInsert(getBinary());  //can't insert if fixed length in case of binary
+  cursorLimit = getBinary() ? repString.strLen() : 25;
 }
-String EditorScreen::elName(uint8_t i) {
-  if (i < 10) return letterIndex(F("b"), i);
+StrVal EditorScreen::elName(uint8_t i) {
+  if (i < 10) return letterIndex(Q("b"), i).toVal();
   switch (i) {
     case 10: return F("err");
     case 11: return F("flo");
@@ -270,7 +273,7 @@ void EditorScreen::loadScreen() {
     ++j;
     for (; i < j; ++i) hide(i);
   };
-  goNextionPage(F("NUM"));  //load page
+  goNextionPage(Q("NUM"));  //load page
   if (getLocked()) {
     hideHide(0, 15);  //hide all input buttons
     goto skipChecks;
@@ -289,7 +292,7 @@ void EditorScreen::loadScreen() {
     hide(15);  //hide negate
 skipChecks:
   loadTitle();
-  if (!dirty) setVisibility(F("can"), false);
+  if (!dirty) setVisibility(Q("can"), false);
   updateString();
 }
 void EditorScreen::inputEvent() {
@@ -331,14 +334,14 @@ void EditorScreen::inputEvent() {
 }
 void EditorScreen::apply() {
   if (!dirty) return endDialogue('C');                                     //not dirty nothing to do
-  if (showDialogue(ShortDialogue::yn(F("Изменить параметр?"))) == 'Y')     //ask
+  if (showDialogue(ShortDialogue::yn(Q("Изменить параметр?"))) == 'Y')     //ask
     if (config->fromString(repString))                                     //try
       return endDialogue('A');                                             //applied
-    else showDialogue(ShortDialogue::notice(F("Неподходящее значение")));  //didn't work
+    else showDialogue(ShortDialogue::notice(Q("Неподходящее значение")));  //didn't work
 }
 void EditorScreen::cancel() {
   if (!dirty) return endDialogue('C');  //not dirty nothing to do
-  repString = config->toString();
+  repString.fillWith(config->toString());
   dirty = false;
 }
 SettingsScreen::SettingItem::SettingItem(Config* config, bool withPtr, const String& name) {
@@ -368,7 +371,7 @@ void SettingsScreen::loadScreen() {
   Serial.println(F("Loading Settings"));
   delay(20);
 #endif
-  goNextionPage(F("LTR"));
+  goNextionPage(Q("LTR"));
 #ifdef SETDebug
   Serial.println(F("Starting loading pageControl"));
   delay(10);
@@ -412,7 +415,7 @@ SettingsScreen::SettingsScreen(const Array<SettingItem*>& settingItems, const St
 #endif  //SETDebug
   {
     uint8_t i = 0;
-    for (auto settingItem=settingItems.iterator(); settingItem.notEnd(); ++settingItem) {
+    for (auto settingItem = settingItems.iterator(); settingItem.notEnd(); ++settingItem) {
       (*collectionControl)[i] = *settingItem;
       ++i;
     }
@@ -443,7 +446,7 @@ const CommandSet ShortDialogue::getCommandSet() const {
 }
 
 void Bios::loadScreen() {
-  goNextionPage(F("Bios"));
+  goNextionPage(Q("Bios"));
 }
 const CommandSet Bios::getCommandSet() const {
   return biosSet();
@@ -463,7 +466,7 @@ void Bios::inputEvent() {
   }
 }
 void BiosInvite::loadScreen() {
-  goNextionPage(F("BiosIntro"));
+  goNextionPage(Q("BiosIntro"));
 }
 const CommandSet BiosInvite::getCommandSet() const {
   return biosSet();

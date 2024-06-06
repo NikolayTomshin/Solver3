@@ -62,8 +62,8 @@ public:
   Config(void* ptr, size_t size, const String& name, Config::Type type);
   Config(const Config& other);
 
-  bool fromString(const String& valueString) const;
-  String toString() const;
+  bool fromString(const StrRep& valueString) const;
+  StrVal toString() const;
   template<class T> T& getReference() const;
 };
 

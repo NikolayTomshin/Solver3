@@ -257,73 +257,73 @@ void comEnd() {  //Nextion command termination
   Serial1.print(F("\xFF\xFF\xFF"));
 }
 
-void loadSomething(const String& objName, const String& propName, const String& value, bool brackets = false) {  //{objName}.{propName}={value}
+void loadSomething(const StrRep& objName, const StrRep& propName, const StrRep& value, bool brackets = false) {  //{objName}.{propName}={value}
   comEnd();
-  Serial1.print(objName);
+  objName.print(Serial1);
   Serial1.write('.');
-  Serial1.print(propName);
+  propName.print(Serial1);
   Serial1.write('=');
   if (brackets) {
     Serial1.write('"');
-    Serial1.print(value);
+    value.print(Serial1);
     Serial1.write('"');
   } else
-    Serial1.print(value);
+    value.print(Serial1);
   comEnd();
 }
 
-void loadTxt(const String& name, const String& txt) {  //update text  {name}.txt="{txt}"
-  loadSomething(name, F("txt"), txt, true);
+void loadTxt(const StrRep& name, const StrRep& txt) {  //update text  {name}.txt="{txt}"
+  loadSomething(name, Q("txt"), txt, true);
 }
 
-void loadVal(const String& name, uint16_t val) {  //{name}.val={val}
-  loadSomething(name, F("val"), String(val), false);
+void loadVal(const StrRep& name, uint16_t val) {  //{name}.val={val}
+  loadSomething(name, Q("val"), StrVal(String(val)), false);
 }
 void loadPic(const String& name, uint16_t pic) {
-  loadSomething(name, F("pic"), String(pic), false);
+  loadSomething(name, Q("pic"), StrVal(String(pic)), false);
 }
-void callFunction(const String& name, const String& par0 = "") {  //{name} {pars}
+void callFunction(const StrRep& name, const StrRep& par0 = StrEmpty()) {  //{name} {pars}
   comEnd();
-  Serial1.print(name);
+  name.print(Serial1);
   Serial1.write(' ');
-  Serial1.print(par0);
+  par0.print(Serial1);
 }
 
-void addParametre(const String& par) {  //use after call function to add parameter
+void addParametre(const StrRep& par) {  //use after call function to add parameter
   Serial1.write(',');
-  Serial1.print(par);
+  par.print(Serial1);
 }
 
-void click(const String& name, bool press) {  //click {name},[press/release]
-  callFunction(F("click"), name);
-  addParametre(String(press));
+void click(const StrRep& name, bool press) {  //click {name},[press/release]
+  callFunction(Q("click"), name);
+  addParametre(C(press));  //StrChar(bool)='1','0';
   comEnd();
 }
 
-void goNextionPage(const String& pagename) {
-  callFunction(F("page"), pagename);
+void goNextionPage(const StrRep& pagename) {
+  callFunction(Q("page"), pagename);
   comEnd();
 }
 
-String letterIndex(const String& letter, uint8_t index) {
-  return (letter + String(index));
+StrSum letterIndex(const StrRep& letter, uint8_t index) {
+  return strCompose(letter, StrVal(String(index)));
 }
 
 void loadSlider(uint8_t number, uint8_t value) {
-  const String name = letterIndex(F("h"), number);
+  auto name=letterIndex((C('h'), number);
   loadVal(name, value);
   click(name, false);
 }
 //Show or hide element on Nextion screen
-void setVisibility(const String& objName, bool visible) {
+void setVisibility(const StrRep& objName, bool visible) {
 #ifdef SCOMdebug
-  Serial.print(objName);
+  objName.print(Serial1);
   Serial.print(F(" VIS "));
   Serial.println(visible);
   delay(10);
 #endif
-  callFunction(F("vis"), objName);
-  addParametre(String(visible));
+  callFunction(Q("vis"), objName);
+  addParametre(C(visible));
   comEnd();
 }
 
@@ -340,7 +340,7 @@ void NextionScreen::setActive(PortListener& port) {
   isActive = true;
   port.setCommandSet(getCommandSet());
 #ifdef SCOMdebug
-  Serial.println(F("SUCC"));
+  Serial.println(F("I active"));
   delay(10);
 #endif;
   loadScreen();
@@ -348,7 +348,7 @@ void NextionScreen::setActive(PortListener& port) {
 void NextionScreen::deactivateScreen(PortListener& port) {
   if (currentScreen != NULL) currentScreen->isActive = false;
   currentScreen = NULL;
-  goNextionPage("0");
+  goNextionPage(C('0'));
 }
 void NextionScreen::reloadActive() {
   if (currentScreen != NULL)
@@ -722,7 +722,7 @@ void ShortDialogue::initialize(const String& messageString,
   answers[2] = r;
 }
 void ShortDialogue::loadScreen() {
-  goNextionPage(F("Short"));
+  goNextionPage(Q("Short"));
   loadTitle();
   message->load();
   for (uint8_t i = 0; i < 3; ++i) {

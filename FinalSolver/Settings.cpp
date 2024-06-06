@@ -31,66 +31,63 @@ Config::Config(const Config& other) {
 }
 
 
-bool Config::fromString(const String& valueString) const {
+bool Config::fromString(const StrRep& valueString) const {
   switch (type) {
     case Type::String:
-      getReference<String>() = valueString;
+      getReference<StrVal>() = valueString;
       return true;
     case Type::Complicated:
     case Type::Enum:
     case Type::Binary: BitCoding::writeBinaryString(valueString, ptr, size); return true;
     case Type::Bool:
-      bool res = valueString == F("true");
-      if ((valueString == F("false")) || res) {
-        getReference<bool>() = res;
-        return true;
-      }
-      return false;
+      bool res = boolFromStr(valueString);
+      getReference<bool>() = res;
+      return (valueString == Q("false")) || res) ;  //if one of valid values
     case Type::Float:
       switch (size) {
-        default: return setAttemptFloat<float>(valueString, &String::toFloat);
-        case 8: return setAttemptFloat<double>(valueString, &String::toDouble);
+        default: return setAttemptFloat<float>(valueString.toString(), &String::toFloat);
+        case 8: return setAttemptFloat<double>(valueString.toString(), &String::toDouble);
       }
     case Type::Int:
       switch (size) {
-        default: return setAttempt<int8_t, long>(valueString, &String::toInt);
-        case 2: return setAttempt<int16_t, long>(valueString, &String::toInt);
-        case 4: return setAttempt<int32_t, long>(valueString, &String::toInt);
+        default: return setAttempt<int8_t, long>(valueString.toString(), &String::toInt);
+        case 2: return setAttempt<int16_t, long>(valueString.toString(), &String::toInt);
+        case 4: return setAttempt<int32_t, long>(valueString.toString(), &String::toInt);
       }
     case Type::Uint:
       switch (size) {
-        default: return setAttempt<uint8_t, long>(valueString, &String::toInt);
-        case 2: return setAttempt<uint16_t, long>(valueString, &String::toInt);
-        case 4: return setAttempt<uint32_t, long>(valueString, &String::toInt);
+        default: return setAttempt<uint8_t, long>(valueString.toString(), &String::toInt);
+        case 2: return setAttempt<uint16_t, long>(valueString.toString(), &String::toInt);
+        case 4: return setAttempt<uint32_t, long>(valueString.toString(), &String::toInt);
       }
   }
 }
 Config::Type Config::getType() const {
   return type;
 }
-String Config::toString() const {
+StrVal Config::toString() const {
   switch (type) {
-    case Type::String: return getReference<String>();
+    case Type::String: return getReference<StrVal>();
     case Type::Binary: return BitCoding::binaryArrayString(ptr, size);
     case Type::Bool: return boolStr(getReference<bool>());
-    case Type::Complicated: return String(F("can't show"));
-    case Type::Enum: return String();
+    case Type::Complicated: return StrVal(F("can't show"));
+    case Type::Enum: return StrVal();
     case Type::Float:
       switch (size) {
-        default: return String(getReference<float>());
-        case 8: return String(getReference<double>());
+        default: return StrVal(getReference<float>());
+        case 8: return StrVal(getReference<double>());
       }
     case Type::Int:
       switch (size) {
-        default: return String(getReference<int8_t>());
-        case 2: return String(getReference<int16_t>());
-        case 4: return String(getReference<int32_t>());
+        default: return StrVal(getReference<int8_t>());
+        case 2: return StrVal(getReference<int16_t>());
+        case 4: return StrVal(getReference<int32_t>());
       }
     case Type::Uint:
       switch (size) {
-        default: return String(getReference<uint8_t>());
-        case 2: return String(getReference<uint16_t>());
-        case 4: return String(getReference<uint32_t>());
+        default: return StrVal(getReference<uint8_t>());
+        case 2: return StrVal(getReference<uint16_t>());
+        case 4: return StrVal(getReference<uint32_t>());
       }
   }
 }
@@ -119,7 +116,7 @@ void ConfigWithPtr::print() const {
   Serial.print(F("\t ePtr="));
   Serial.println(ePtr);
 }
-ConfigurableObject::initialize(const IConfigurable* object, const String& name, uint16_t nextPtr) {
+ConfigurableObject::initialize(const IConfigurable* object, const StrRep& name, uint16_t nextPtr) {
   uint8_t size = object->numberOfConfigs();
   trackedSettings = new Array<ConfigWithPtr>(size);
   for (uint8_t i = 0; i < size; i++) {  //for all configs
@@ -149,16 +146,16 @@ void ConfigurableObject::loadAll() const {
   for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
     (*config).load();
 }
-const ConfigWithPtr& ConfigurableObject::getSetting(const String& configName) const {
+const ConfigWithPtr& ConfigurableObject::getSetting(const StrRep& configName) const {
 #ifdef SETDebug
   Serial.print(F("Set search configName="));
-  Serial.print(configName);
+  configName.print(Serial);
   Serial.print(F("\t size="));
-  Serial.println(configName.length());
+  Serial.println(configName.strLen());
 #endif  //SETDebug
-  if ((trackedSettings != NULL) && (configName.length() < 6))
+  if ((trackedSettings != NULL) && (configName.strLen() < 6))
     for (auto config = trackedSettings->iterator(); config.notEnd(); ++config)
-      if (!configName.compareTo(String((*config).name))) {
+      if (configName == StrBuffer((*config).name, 6)) {
 #ifdef SETDebug
         Serial.println(F("Found"));
         (*config).print();
@@ -185,7 +182,7 @@ uint8_t ConfigurableObject::getNumberOfSettings() const {
   return trackedSettings->getSize();
 }
 
-void EEPROM_register::addObject(IConfigurable* object, const String& name) {
+void EEPROM_register::addObject(IConfigurable* object, const StrRep& name) {
   uint16_t nextPtr = 0;
   if (trackedObjects.getSize()) {
     const ConfigWithPtr& conf = trackedObjects.peek().trackedSettings->last();  //last created setting
@@ -199,7 +196,7 @@ void EEPROM_register::addObject(IConfigurable* object, const String& name) {
   }
 #ifdef SETDebug
   Serial.print(F("Adding "));
-  Serial.print(name);
+  name.print(Serial);
   Serial.print(F(" next ePtr="));
   Serial.println(nextPtr);
 #endif  //SETDebug
@@ -207,19 +204,19 @@ void EEPROM_register::addObject(IConfigurable* object, const String& name) {
   trackedObjects.push(ConfigurableObject());  //add to tracked objects
 
 #ifdef SETDebug
-  Serial.println("ok");
+  Serial.println(F("ok"));
 #endif  //SETDebug
   trackedObjects.peek().initialize(object, name, nextPtr);
 }
 EEPROM_register::EEPROM_register() {
   //addObject(this, "reg");
 }
-const ConfigurableObject& EEPROM_register::getConfObject(const String& objName) const {
+const ConfigurableObject& EEPROM_register::getConfObject(const StrRep& objName) const {
 #ifdef SETDebug
   Serial.print(F("Obj search name="));
-  Serial.println(objName);
+  objName.printn(Serial);
 #endif  //SETDebug
-  if (objName.length() <= 6)
+  if (objName.strLen() <= 6)
     for (auto confObject = trackedObjects.iteratorForward(); confObject.notEnd(); ++confObject) {
 #ifdef SETDebug
       Serial.print(F("Comparing to "));

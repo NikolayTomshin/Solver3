@@ -9,8 +9,8 @@
 void spn();
 
 bool& f(bool& other);
-String boolStr(bool value);
-bool fromString(const String& boolString);
+StrVal boolStr(bool value);
+bool boolFromString(const StrRep& boolString);
 
 int8_t Mod(int8_t period, int8_t argument);
 int8_t Mod3(int8_t argument);
@@ -714,6 +714,7 @@ public:
         --items;
       }
     }
+    virtual SPtr<RIterator> clone() const = 0;
   };
   class DumbRiterator : public RIterator {
   protected:
@@ -721,6 +722,9 @@ public:
     uint16_t limit;
     Representation& rep;
   public:
+    virtual SPtr<RIterator> clone() const override {
+      return SPtr<RIterator>(new DumbRiterator(*this));
+    }
     uint16_t getCounter() const {
       return index;
     }
@@ -737,16 +741,16 @@ public:
       index < limit;
     }
   };
-  SPtr<Representation> getProxy() const {
-    return SPtr<Representation>(new Reference(*this));
+  SPtr<Representation> getProxy() {
+    return SPtr<Representation>(new Reference<Representation>(*this));
   }
   virtual ReturnType readAt(uint16_t index) = 0;
   virtual uint16_t getSize() = 0;
   virtual SPtr<RIterator> iteratorForwardV() = 0;
 protected:
-  class Reference : public Representation {
+  template<class TRepresentation> class Reference : public TRepresentation {
   protected:
-    Representation& ref;
+    TRepresentation& ref;
     using typename Representation::ReturnType;
     using typename Representation::_Type;
     using typename Representation::RIterator;
@@ -766,8 +770,19 @@ protected:
 };
 //VariableRepresentation : Rep<T>, OrderedAccess<T>
 template<class TRepresentation> struct VariableRepresentation : public TRepresentation, public OrderedAccess<typename TRepresentation::_Type> {
+protected:
   using typename TRepresentation::ReturnType;
   using typename TRepresentation::_Type;
+  class Reference : public TRepresentation::template Reference<VariableRepresentation> {
+  public:
+    virtual _Type& itemAt(uint16_t index) override {
+      return this->ref.itemAt(index);
+    }
+  };
+public:
+  SPtr<VariableRepresentation> getProxyVar() {
+    return SPtr<VariableRepresentation>(new Reference(*this));
+  }
 };
 //Aliases for val and ref reps
 template<class T> using ValRep = Representation<T>;
@@ -783,6 +798,9 @@ protected:
     uint16_t& until;
     SPtr<RIterator> itP;  //sub iterator pointer
   public:
+    virtual SPtr<RIterator> clone() const override {
+      return SPtr<RIterator>(new SpanIterator(*this));
+    }
     SpanIterator(SpanRepresentation& sRep, TRepresentation& rep)
       : until(sRep.until), itP(move(rep.iteratorForwardV())) {
       skip(sRep.from);
@@ -805,10 +823,8 @@ protected:
   uint16_t until;
 public:
   SpanRepresentation(const volatile TRepresentation& rep, uint16_t from, uint16_t until = 0xFFFF)
-    : rep(&rep) {
-    uLimited(until, rep.getSize());  //max until = size
-    this->until = until;
-    this->from = uLimitStrict(from, until);  //from is less then until
+    : rep(&rep), until(until), from(from) {
+    updateSpan();
   }
   TRepresentation* sourcePtr() const;
   uint16_t getFrom() const;
@@ -816,6 +832,8 @@ public:
 
   void setFrom(uint16_t from);
   void setUntil(uint16_t until);
+
+  SpanRepresentation& shift(int16_t charsForward);
 
   void updateSpan();
   void reset(uint16_t from, uint16_t until);
@@ -855,6 +873,10 @@ protected:
     bool isIndexInside(uint16_t index) const {
       return index < limitGlobalIndex;
     }
+    Part(Part&& other)
+      : rep(move(other.rep)) {
+      swap(limitGlobalIndex, other.limitGlobalIndex);
+    }
   };
   using typename Representation<ReturnType>::RIterator;
   class CompositonIterator : public RIterator {
@@ -863,6 +885,9 @@ protected:
     NodeIterator stackIterator;
     SPtr<RIterator> subIteratorPtr;
   public:
+    virtual SPtr<RIterator> clone() const override {
+      return SPtr<RIterator>(new CompositonIterator(*this));
+    }
     CompositonIterator(NodeIterator& stackIterator)
       : stackIterator(stackIterator) {
       if (stackIterator.notEnd())
@@ -897,6 +922,7 @@ end:  //stackIterator might be ended at this point
   void evaluateMetaData(uint16_t fromPartIndex = 0);  //recalculate limitGlobalIndex from part in stack
 public:
   void cleanElements(bool removeEmptyElements = false);
+  void forceClean(bool removeEmptyElements = false);
 
   RepresentationComposition() {}  //empty
   ~RepresentationComposition();   //5
@@ -952,22 +978,23 @@ public:
   RepPtr popFromBack(uint16_t index) {
     return popFromFront(stack.size - 1 - index);
   }
-  void push(RepPtr&& sptr) {  //push first
-    dirtyElement = 0;         //everything dirty
-    size += sptr->getSize();
-    stack.push(move(sptr));
+  void push(RepPtr&& sptr) {  //push first PART
+    TRepresentation* ptr = sptr.take();
+    Part newPart(ptr);
+    size += (newPart.limitGlobalIndex = ptr->getSize());
+    dirtyElement = 1;  //everything after first is dirty
+    stack.push(move(newPart));
   }
-  void pushBack(RepPtr&& sptr) {
-    dirtyElement = stack.size;
+  void pushBack(RepPtr&& sptr) {  //push PART to the end
     size += sptr->getSize();
-    stack.pushBack(move(sptr));
+    stack.pushBack(new Part(move(sptr)));
   }
-  void pushFromFront(RepPtr&& sptr, uint16_t skip) {
+  void pushFromFront(RepPtr&& sptr, uint16_t skip) {  //push PART at index
     uLimited(dirtyElement, skip);
     size += sptr->getSize();
-    stack.pushFromFront(move(sptr), skip);
+    stack.pushFromFront(new Part(move(sptr)), skip);
   }
-  void pushFromBack(RepPtr&& sptr, uint16_t skip) {
+  void pushFromBack(RepPtr&& sptr, uint16_t skip) {  //push PART at index from back(last)
     pushFromFront(move(sptr), stack->size - 1 - skip);
   }
   void swapParts(uint16_t a, uint16_t b, bool fromTop) {  //swap by index
@@ -1593,11 +1620,34 @@ template<class TRepresentation> void SpanRepresentation<TRepresentation>::setFro
 template<class TRepresentation> void SpanRepresentation<TRepresentation>::setUntil(uint16_t until) {
   reset(from, until);
 }
+template<class TRepresentation> SpanRepresentation<TRepresentation>& SpanRepresentation<TRepresentation>::shift(int16_t charsForward) {
+  if (charsForward < 0) {                               //shift view left; charsForward negative
+    if (charsForward > from) {                          //collapsing left
+      from = 0;                                         //from at 0
+      until -= uLimit<uint16_t>(-charsForward, until);  //until can't go below 0; uLimited(positive values)
+      goto end;
+    }
+  } else {                                        //shift view right; charsForward positive
+    uint16_t size = rep.getSize();                //size=max until
+    if (size < (until + charsForward)) {          //collapsing right
+      until = size;                               //set to max
+      from = uLimit(from + charsForward, until);  //limit increase
+      goto end;
+    }
+  }  //else not collapsing, simply add charsForward
+  until += charsForward;
+  from += charsForward;
+end:
+  return *this;
+}
 template<class TRepresentation> void SpanRepresentation<TRepresentation>::updateSpan() {
-  *this = SpanRep(*rep, from, until);
+  uLimited(until, rep.getSize());  //max until = size
+  uLimitedStrict(from, until);     //from is less then until
 }
 template<class TRepresentation> void SpanRepresentation<TRepresentation>::reset(uint16_t from, uint16_t until) {
-  *this = SpanRep(*rep, from, until);
+  this->from = from;
+  this->until = until;
+  updateSpan();
 }
 template<class TRepresentation> typename TRepresentation::ReturnType SpanRepresentation<TRepresentation>::readAt(uint16_t index) {
   return rep->readAt(from + index);
@@ -1658,6 +1708,10 @@ template<class TRepresentation> void RepresentationComposition<TRepresentation>:
 template<class TRepresentation> void RepresentationComposition<TRepresentation>::cleanElements(bool removeEmptyElements) {
   if (removeEmptyElements) removeEmpty();
   evaluateMetaData(dirtyElement);
+}
+template<class TRepresentation> void RepresentationComposition<TRepresentation>::forceClean(bool removeEmptyElements) {
+  dirtyElement = 0;
+  cleanElements(removeEmptyElements);
 }
 ///RepresentationComposition
 ///Reps

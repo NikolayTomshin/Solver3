@@ -296,27 +296,27 @@ bool Axis::isPositive() const {
   return code < 3;
 }
 void Axis::printLetter() const {
-  String letters;
+  FStr letters;
   switch (code) {
     case 0:
-      letters = "+X";
+      letters = F("+X");
       break;
     case 1:
-      letters = "+Y";
+      letters = F("+Y");
       break;
     case 2:
-      letters = "+Z";
+      letters = F("+Z");
       break;
     case 3:
-      letters = "-x";
+      letters = F("-x");
       break;
     case 4:
-      letters = "-y";
+      letters = F("-y");
       break;
     case 5:
-      letters = "-z";
+      letters = F("-z");
       break;
-    default: letters = "ER";
+    default: letters = F("ER");
   }
   pout(letters);
 }
@@ -620,16 +620,16 @@ Orientation& Orientation::operator*=(const Rotation& other) {
   uint8_t rotIndex = other.getAx();  //axis of clockwise rotation
   // Serial.print(rotIndex);
   // Serial.print(",");
-  switch (uint8_t(other.getOA())) {              //angle
+  switch (uint8_t(other.getOA())) {  //angle
     case 2:
-    // Serial.print("case2");
+      // Serial.print("case2");
       rotate(rotIndex);  //180`=single+single
     case 1:
-    // Serial.print("case1");
+      // Serial.print("case1");
       rotate(rotIndex);  //single clockwise
       break;
     case 3:
-    // Serial.print("case3");
+      // Serial.print("case3");
       rotate((rotIndex + 3) % 6);  //3=-1=single(negative axis)=Mod6(rotIndex+3)
   }
   return *this;
